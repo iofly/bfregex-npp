@@ -1,0 +1,58 @@
+-- Describe REGEXLIB
+CREATE TABLE "regexlib" (
+    "regexid" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    "title" TEXT NOT NULL,
+    "created" BIGINT NOT NULL,
+    "modified" BIGINT NOT NULL,
+    "opencount" INTEGER NOT NULL,
+    "savecount" INTEGER NOT NULL,
+    "runcount" INTEGER NOT NULL,
+    "expression" TEXT NOT NULL,
+    "flag_ignorecase" INTEGER NOT NULL,
+    "flag_singleline" INTEGER NOT NULL,
+    "flag_multiline" INTEGER NOT NULL,
+    "flag_ignorepatternspace" INTEGER NOT NULL,
+    "flag_explicitcapture" INTEGER NOT NULL,
+    "flag_notempty" INTEGER NOT NULL
+)
+----------
+-- Describe VALUETYPE
+CREATE TABLE "valuetype" (
+    "valuetypeid" INTEGER PRIMARY KEY NOT NULL,
+    "description" TEXT NOT NULL
+)
+----------
+-- Describe SETTINGS
+CREATE TABLE "settings" (
+    "settingid" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    "settingvalue" TEXT NOT NULL,
+    "valuetypeid" INTEGER NOT NULL,
+    FOREIGN KEY(valuetypeid) REFERENCES valuetype(valuetypeid)
+)
+----------
+
+
+INSERT INTO main.valuetype
+(valuetypeid, description)
+VALUES
+(1, 'integer')
+----------
+
+INSERT INTO main.valuetype
+(valuetypeid, description)
+VALUES
+(2, 'string')
+----------
+
+INSERT INTO main.valuetype
+(valuetypeid, description)
+VALUES
+(3, 'bool')
+----------
+
+INSERT INTO main.valuetype
+(valuetypeid, description)
+VALUES
+(4, 'datetime')
+
+----------
