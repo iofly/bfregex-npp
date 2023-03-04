@@ -13,6 +13,7 @@ type
 
   PDarkModeColors = ^TDarkModeColors;
   TDarkModeColors = record
+  //public
       background: Longint;
       softerBackground: Longint;
       hotBackground: Longint;
@@ -28,6 +29,7 @@ type
   end;
 
   TDarkModeColorsDelphi = record
+  //public
       background: TColor;
       softerBackground: TColor;
       hotBackground: TColor;
@@ -49,16 +51,18 @@ type
   TdsPlugin = class(TNppPlugin)
   private
     FForm: TForm;
-    procedure LoadDarkModeColorsDelphi(nppDarkModeColors: TDarkModeColors; var delphiColors: TDarkModeColorsDelphi);
     procedure DoNppnDarkModeChanged;
+
+    function GetTColorFromWindowsColor(wcolor: Integer): TColor;
   public
     constructor Create;
-    function isUnicode: boolean;
     procedure DoNppnToolbarModification; override;
     procedure DoShowHide;
     procedure FuncAbout;
     procedure BeNotified(sn: PSCNotification); override;
-
+    function isUnicode: boolean;
+    function IsDarkMode: boolean;
+    function GetDarkModeColorsDelphi(nppDarkModeColors: TDarkModeColors): TDarkModeColorsDelphi;
   end;
 
 const
@@ -146,57 +150,87 @@ begin
   (FForm as TfrmMain).Carousel;
 end;
 
-procedure TdsPlugin.LoadDarkModeColorsDelphi(nppDarkModeColors: TDarkModeColors; var delphiColors: TDarkModeColorsDelphi);
+function TdsPlugin.GetDarkModeColorsDelphi(nppDarkModeColors: TDarkModeColors): TDarkModeColorsDelphi;
+var
+   delphiColors: TDarkModeColorsDelphi;
 begin
-   delphiColors.background:=TColor(nppDarkModeColors.background);
-   delphiColors.softerBackground:=TColor(nppDarkModeColors.softerBackground);
-   delphiColors.hotBackground:=TColor(nppDarkModeColors.hotBackground);
-   delphiColors.pureBackground:=TColor(nppDarkModeColors.pureBackground);
-   delphiColors.errorBackground:=TColor(nppDarkModeColors.errorBackground);
-   delphiColors.text:=TColor(nppDarkModeColors.text);
-   delphiColors.darkerText:=TColor(nppDarkModeColors.darkerText);
-   delphiColors.disabledText:=TColor(nppDarkModeColors.disabledText);
-   delphiColors.linkText:=TColor(nppDarkModeColors.linkText);
-   delphiColors.edge:=TColor(nppDarkModeColors.edge);
-   delphiColors.hotEdge:=TColor(nppDarkModeColors.hotEdge);
-   delphiColors.disabledEdge:=TColor(nppDarkModeColors.disabledEdge);
+
+      delphiColors.background:=        GetTColorFromWindowsColor(nppDarkModeColors.background);
+      delphiColors.softerBackground:=  GetTColorFromWindowsColor(nppDarkModeColors.softerBackground);
+      delphiColors.hotBackground:=     GetTColorFromWindowsColor(nppDarkModeColors.hotBackground);
+      delphiColors.pureBackground:=    GetTColorFromWindowsColor(nppDarkModeColors.pureBackground);
+      delphiColors.errorBackground:=   GetTColorFromWindowsColor(nppDarkModeColors.errorBackground);
+      delphiColors.text:=              GetTColorFromWindowsColor(nppDarkModeColors.text);
+      delphiColors.darkerText:=        GetTColorFromWindowsColor(nppDarkModeColors.darkerText);
+      delphiColors.disabledText:=      GetTColorFromWindowsColor(nppDarkModeColors.disabledText);
+      delphiColors.linkText:=          GetTColorFromWindowsColor(nppDarkModeColors.linkText);
+      delphiColors.edge:=              GetTColorFromWindowsColor(nppDarkModeColors.edge);
+      delphiColors.hotEdge:=           GetTColorFromWindowsColor(nppDarkModeColors.hotEdge);
+      delphiColors.disabledEdge:=      GetTColorFromWindowsColor(nppDarkModeColors.disabledEdge);
+
+      result:=delphiColors;
+
 end;
+
+function TdsPlugin.GetTColorFromWindowsColor(wcolor: Integer): TColor;
+var
+   s: string;
+begin
+   s:=system.sysutils.inttohex(wcolor, 6);
+
+   if(Length(s)>=6) then begin
+      result:= RGB(StrToIntDef('$' + s.Substring(0, 2), 0),
+                   StrToIntDef('$' + s.Substring(2, 2), 0),
+                   StrToIntDef('$' + s.Substring(4, 2), 0));
+   end
+   else begin
+      result:=clBlack;
+   end;
+
+
+end;
+
+function  TdsPlugin.IsDarkMode: boolean;
+var
+   ui: NativeInt;
+begin
+   ui:=Npp_Send(NPPM_ISDARKMODEENABLED,0,0);
+   result:= ui = 1;
+end;
+
 
 procedure TdsPlugin.DoNppnDarkModeChanged;
 var
-   ui: NativeInt;
    dmc: TDarkModeColors;
    delphiColors: TDarkModeColorsDelphi;
    msg_param: PDarkModeColors;
   // dt: TDateTime;
    res: NativeInt;
-
 begin
 
-  ui:=Npp_Send(NPPM_ISDARKMODEENABLED,0,0);
-
-  if(ui = 1) then begin
+  if(IsDarkMode) then begin
      //ShowMessage('darkmode enabled');
      msg_param:=@dmc;
      res:=Npp_Send(NPPM_GETDARKMODECOLORS, SizeOf(TDarkModeColors), LPARAM(msg_param));
-     if(res = 0) then begin
-         self.LoadDarkModeColorsDelphi(dmc, delphiColors);
+     if(res = 1) then begin
+         delphiColors:=self.GetDarkModeColorsDelphi(dmc);
      end;
 
-     if not Assigned(FForm) then FForm := TfrmMain.Create(self, cnstMainDlgId);
+     if not Assigned(FForm) then
+      FForm := TfrmMain.Create(self, cnstMainDlgId);
 
      (FForm as TfrmMain).ApplyDarkColorScheme(true, delphiColors);
-
-     {ShowMessage('res = ' + IntToStr(res));
-     ShowMessage('background = ' + IntToStr(msg_param.background));
-     ShowMessage('softerBackground = ' + IntToStr(msg_param.softerBackground));}
-
   end
   else begin
       (FForm as TfrmMain).ApplyDarkColorScheme(false, delphiColors);
   end;
 
 end;
+
+
+
+
+
 
 
 procedure TdsPlugin.BeNotified(sn: PSCNotification);

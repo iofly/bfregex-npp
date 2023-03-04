@@ -17,7 +17,8 @@ uses
   FireDAC.UI.Intf, FireDAC.ConsoleUI.Wait, FireDAC.Stan.Intf, FireDAC.Comp.UI,
   FDSqliteTypes, FDSqliteManger, FireDAC.Stan.Def, FireDAC.DApt,
   FireDAC.Phys.SQLiteWrapper.Stat, FireDAC.Stan.ExprFuncs, FireDAC.Phys.SQLiteDef,
-  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async;
+  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async, JvExStdCtrls,
+  JvCheckBox, Vcl.ToolWin;
 
 type
   TfrmMain = class(TNppDockingForm)
@@ -35,7 +36,6 @@ type
     mnuRegexDelete: TMenuItem;
     mnuRegexEdit: TMenuItem;
     N2: TMenuItem;
-    pnlRegexToolbar: TPanel;
     pnlRegexOptions: TPanel;
     lblCurrentRegex: TLabel;
     lblEdit: TLabel;
@@ -48,14 +48,6 @@ type
     mnuLog: TPopupMenu;
     mnuClearLog: TMenuItem;
     mnuSaveLog: TMenuItem;
-    btnNewPng: TPngBitBtn;
-    btnSavePng: TPngBitBtn;
-    btnSaveAsPng: TPngBitBtn;
-    btnAboutPng: TPngBitBtn;
-    btnClearPng: TPngBitBtn;
-    btnRunPng: TPngBitBtn;
-    imglToolBar: TPngImageList;
-    imglTabs: TPngImageList;
     TabSheet5: TTabSheet;
     Panel7: TPanel;
     Label2: TLabel;
@@ -70,12 +62,19 @@ type
     cbIgnoreDuplicates: TCheckBox;
     mmoResults: TMemo;
     TreeView1: TTreeView;
-    pnlTBJankySpacer: TPanel;
     Splitter2: TSplitter;
     FDGUIxWaitCursor1: TFDGUIxWaitCursor;
     SynEdit1: TMemo;
     FDPhysSQLiteDriverLink1: TFDPhysSQLiteDriverLink;
-    SpeedButton1: TSpeedButton;
+    ImageList1: TImageList;
+    pnlRegexToolbar: TPanel;
+    btnAbout: TSpeedButton;
+    btnRun: TSpeedButton;
+    btnClear: TSpeedButton;
+    btnSaveAs: TSpeedButton;
+    btnSave: TSpeedButton;
+    btnNew: TSpeedButton;
+    pnlTBJankySpacer: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -99,6 +98,7 @@ type
     procedure SynEdit1KeyPress(Sender: TObject; var Key: Char);
     procedure SynEdit1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure Splitter1Moved(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
 
     FMenuItemCheck: TMenuItemCheck;
@@ -173,6 +173,11 @@ begin
    selectSingleList:=TList<TAppRegex>.Create;
    sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
    self.DoSearch('');
+
+ //  if(NPlugin.IsDarkMode) then begin
+    //  NPlugin.ApplyCurrentTheme;
+ //  end;
+
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -186,6 +191,32 @@ end;
 procedure TfrmMain.FormHide(Sender: TObject);
 begin
   MenuItemCheck := miHidden;
+end;
+
+procedure TfrmMain.FormShow(Sender: TObject);
+
+var
+   dmc: TDarkModeColors;
+   delphiColors: TDarkModeColorsDelphi;
+   msg_param: PDarkModeColors;
+  // dt: TDateTime;
+   res: NativeInt;
+begin
+   inherited;
+  if(NPLugin.IsDarkMode) then begin
+     //ShowMessage('darkmode enabled');
+     msg_param:=@dmc;
+     res:=NPLugin.Npp_Send(NPPM_GETDARKMODECOLORS, SizeOf(TDarkModeColors), LPARAM(msg_param));
+     if(res = 1) then begin
+         delphiColors:=NPLugin.GetDarkModeColorsDelphi(dmc);
+     end;
+
+     self.ApplyDarkColorScheme(true, delphiColors);
+  end
+  else begin
+      self.ApplyDarkColorScheme(false, delphiColors);
+  end;
+
 end;
 
 procedure TfrmMain.btnAboutClick(Sender: TObject);
@@ -301,9 +332,9 @@ begin
 
   try
      istext := Length(self.SynEdit1.Text) > 0;
-     self.btnSavePng.Enabled := istext;
-     self.btnSaveAsPng.Enabled := istext;
-     self.btnRunPng.Enabled := istext;
+     self.btnSave.Enabled := istext;
+     self.btnSaveAs.Enabled := istext;
+     self.btnRun.Enabled := istext;
      lblEdit.Caption:='Editing *:';
 
      if currentRegexID > 0 then begin
@@ -880,9 +911,9 @@ begin
 
 
      istext := Length(self.SynEdit1.Text) > 0;
-     self.btnSavePng.Enabled := istext;
-     self.btnSaveAsPng.Enabled := istext;
-     self.btnRunPng.Enabled := istext;
+     self.btnSave.Enabled := istext;
+     self.btnSaveAs.Enabled := istext;
+     self.btnRun.Enabled := istext;
 
 
 
@@ -923,9 +954,9 @@ begin
   ProcessingChanges:=true;
   try
      istext := Length(self.SynEdit1.Text) > 0;
-     self.btnSavePng.Enabled := istext;
-     self.btnSaveAsPng.Enabled := istext;
-     self.btnRunPng.Enabled := istext;
+     self.btnSave.Enabled := istext;
+     self.btnSaveAs.Enabled := istext;
+     self.btnRun.Enabled := istext;
      lblEdit.Caption:='Editing *:';
 
      if currentRegexID > 0 then begin
@@ -1038,7 +1069,7 @@ procedure TfrmMain.ApplyDarkColorScheme(isDarkMode: boolean; delphiColors: TDark
 var
    drkCl: TColor;
 begin
-exit;
+//exit;
 
    if(not isDarkMode) then begin
       self.SynEdit1.Color := clWindow;
@@ -1082,11 +1113,11 @@ exit;
       self.cbIgnoreDuplicates.Font.Color:=clWindowText;
 
 
+      self.Splitter1.Color:=clBtnFace;
+      self.Splitter2.Color:=clBtnFace;
 
-
-
-
-
+      spinGroupToList.Color:=clWindow;
+      spinGroupToList.Font.Color:=clWindowText;
 
    end
    else begin
@@ -1126,25 +1157,28 @@ exit;
       self.Panel7.Color:=delphiColors.softerBackground;//drkCl;
       self.Panel8.Color:=delphiColors.softerBackground;//drkCl;
 
-
       self.lblEdit.Font.Color:=delphiColors.text;//clWhite;
       self.lblCurrentRegex.Font.Color:=delphiColors.text;//clWhite;
       self.label2.Font.Color:=delphiColors.text;//clWhite;
 
-      self.cbroIgnoreCase.Font.Color:=delphiColors.text;//clWhite;
-      self.cbroMultiline.Font.Color:=delphiColors.text;//clWhite;
-      self.cbroExplicitCapture.Font.Color:=delphiColors.text;//clWhite;
-      self.cbroSingleLine.Font.Color:=delphiColors.text;//clWhite;
-      self.cbroIgnoreWhitespace.Font.Color:=delphiColors.text;//clWhite;
-      self.cbroNotEmpty.Font.Color:=delphiColors.text;//clWhite;
-      self.cbIgnoreEmptyGroups.Font.Color:=delphiColors.text;//clWhite;
-      self.cbIgnoreDuplicates.Font.Color:=delphiColors.text;//clWhite;
+      self.cbroIgnoreCase.Font.Color:=clWhite;//delphiColors.text;//clWhite;
+      self.cbroMultiline.Font.Color:=clWhite;//delphiColors.text;//clWhite;
+      self.cbroExplicitCapture.Font.Color:=clWhite;//delphiColors.text;//clWhite;
+      self.cbroSingleLine.Font.Color:=clWhite;//delphiColors.text;//clWhite;
+      self.cbroIgnoreWhitespace.Font.Color:=clWhite;//delphiColors.text;//clWhite;
+      self.cbroNotEmpty.Font.Color:=clWhite;//delphiColors.text;//clWhite;
+      self.cbIgnoreEmptyGroups.Font.Color:=clWhite;//delphiColors.text;//clWhite;
+      self.cbIgnoreDuplicates.Font.Color:=clWhite;//delphiColors.text;//clWhite;
 
 
+      self.Splitter1.Color := delphiColors.softerBackground;
+      self.Splitter2.Color := delphiColors.softerBackground;
+      self.Splitter1.Invalidate;
+      self.Splitter2.Invalidate;
 
-       exit;
-
-
+      spinGroupToList.Color:=delphiColors.softerBackground;
+      spinGroupToList.Font.Color:=delphiColors.text;
+     { exit;
 
 
       self.darkModeColors:=delphiColors;
@@ -1190,7 +1224,7 @@ exit;
       self.cbroNotEmpty.Font.Color:=clWhite;
       self.cbIgnoreEmptyGroups.Font.Color:=clWhite;
       self.cbIgnoreDuplicates.Font.Color:=clWhite;
-
+             }
 
 
 
@@ -1200,5 +1234,7 @@ exit;
 
 
 end;
+
+
 
 end.
