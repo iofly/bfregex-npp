@@ -25,7 +25,8 @@ uses
   frmAboutUnit in 'forms\frmAboutUnit.pas' {frmAbout},
   frmMainUnit in 'forms\frmMainUnit.pas' {frmMain},
   frmRegexTitleUnit in 'forms\frmRegexTitleUnit.pas' {frmRegexTitle},
-  RegexUtils in 'lib\RegexUtils.pas';
+  RegexUtils in 'lib\RegexUtils.pas',
+  frmSettingsUnit in 'forms\frmSettingsUnit.pas' {frmSettings};
 
 {$R *.res}
 {$R bfres.RES}

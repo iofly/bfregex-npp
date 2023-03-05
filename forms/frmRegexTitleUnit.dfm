@@ -28,7 +28,9 @@ object frmRegexTitle: TfrmRegexTitle
     Left = 128
     Top = 29
     Width = 289
-    Height = 24
+    Height = 22
+    Ctl3D = False
+    ParentCtl3D = False
     TabOrder = 0
   end
   object btnOk: TButton

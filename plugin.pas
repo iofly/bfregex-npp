@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows,  Winapi.Messages, System.SysUtils,
   System.Classes, Vcl.ComCtrls, SciSupport, Vcl.Forms,
-  Vcl.Controls, NppPlugin, Vcl.Dialogs, Vcl.Graphics;
+  Vcl.Controls, NppPlugin, Vcl.Dialogs, Vcl.Graphics, StrUtils;
 
 type
   TModalResultArray = array[False..True] of TModalResult;
@@ -51,11 +51,12 @@ type
   TdsPlugin = class(TNppPlugin)
   private
     FForm: TForm;
-    procedure DoNppnDarkModeChanged;
+
 
     function GetTColorFromWindowsColor(wcolor: Integer): TColor;
   public
     constructor Create;
+    procedure DoNppnDarkModeChanged;
     procedure DoNppnToolbarModification; override;
     procedure DoShowHide;
     procedure FuncAbout;
@@ -178,10 +179,15 @@ var
 begin
    s:=system.sysutils.inttohex(wcolor, 6);
 
-   if(Length(s)>=6) then begin
-      result:= RGB(StrToIntDef('$' + s.Substring(0, 2), 0),
+   if(Length(s)>6) then begin
+      s := System.StrUtils.RightStr(s, 6);
+   end;
+
+
+   if(Length(s)=6) then begin
+      result:= RGB(StrToIntDef('$' + s.Substring(4, 2), 0),
                    StrToIntDef('$' + s.Substring(2, 2), 0),
-                   StrToIntDef('$' + s.Substring(4, 2), 0));
+                   StrToIntDef('$' + s.Substring(0, 2), 0));
    end
    else begin
       result:=clBlack;

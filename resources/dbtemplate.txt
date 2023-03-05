@@ -24,9 +24,11 @@ CREATE TABLE "valuetype" (
 ----------
 -- Describe SETTINGS
 CREATE TABLE "settings" (
-    "settingid" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    "settingvalue" TEXT NOT NULL,
-    "valuetypeid" INTEGER NOT NULL,
+        "settingid" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        "settingname" TEXT NOT NULL,
+        "settingvalue" TEXT NOT NULL,
+        "valuetypeid" INTEGER NOT NULL,
+	"active" INTEGER NOT NULL DEFAULT (1),
     FOREIGN KEY(valuetypeid) REFERENCES valuetype(valuetypeid)
 )
 ----------

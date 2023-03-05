@@ -23,11 +23,24 @@ type TFDSqliteManager = class
       function DefaultDir: string;
       function CreateDatabaseFile(out errorMessage: string): boolean;
       function IfThen(b: boolean; trueint, falseint: Integer): Integer;
+      function CreateDefaultData: boolean;
     public
       procedure InsertRegex(var appRegex: TAppRegex; out errormessage: string; out success: boolean);
       procedure UpdateRegex(appRegex: TAppRegex; out errormessage: string; out success: boolean);
       procedure DeleteRegex(regexID: Integer; out errormessage: string; out success: boolean);
       procedure GetRegexs(var appRegexes: TList<TAppRegex>; out errormessage: string; out success: boolean; regexid: Integer = 0; searchText: string = ''; order: TRegexsOrderBy = robTitleAsc);
+
+
+      procedure GetSettings(var settings: TDictionary<string, TAppSetting>; out errormessage: string; out success: boolean);
+      procedure DeleteSetting(out errormessage: string;
+                                       out success: boolean;
+                                       SettingID: Int64 = -1;
+                                       SettingName: string = '');
+      procedure UpdateSetting(appSetting: TAppSetting; Active: boolean; out errormessage: string; out success: boolean);
+      procedure UpdateSettings(appSettings: TDictionary<string, TAppSetting>; out errormessage: string; out success: boolean);
+      procedure InsertSetting(var appSetting: TAppSetting; out errormessage: string; out success: boolean);
+
+
       Constructor Create(dbfilename : string; CreateIfNotExist: boolean);
       Destructor  Destroy; override;
 end;
@@ -93,8 +106,11 @@ begin
          end;
          Open;
 
-         if (not(FileExists(dbfilename))) or (FileGetSize(dbfilename) = 0) then
-            CreateDatabaseFile(err);
+         if (not(FileExists(dbfilename))) or (FileGetSize(dbfilename) = 0) then begin
+            if(CreateDatabaseFile(err)) then begin
+               self.CreateDefaultData;
+            end;
+         end;
        end;
 
    except
@@ -136,6 +152,11 @@ begin
     errorMessage:='';
     result:=true;
 end;
+
+
+
+
+
 
 procedure TFDSqliteManager.InsertRegex(var appRegex: TAppRegex; out errormessage: string; out success: boolean);
 var
@@ -268,6 +289,83 @@ begin
 end;
 
 
+
+
+function TFDSqliteManager.RegexsOrderByToString(orderby: TRegexsOrderBy): string;
+begin
+
+  case orderby of
+    robTitleAsc: result:=' ORDER BY title ASC';
+    robTitleDesc: result:=' ORDER BY title DESC';
+    robDateCreatedAsc: result:=' ORDER BY created ASC';
+    robDateCreatedDesc: result:=' ORDER BY created DESC';
+    robModifiedAsc: result:=' ORDER BY modified ASC';
+    robModifiedDesc: result:=' ORDER BY modified DESC';
+    robOpenCountAsc: result:=' ORDER BY opencount ASC';
+    robOpenCoundDesc: result:=' ORDER BY opencount DESC';
+    robSaveCountAsc:  result:=' ORDER BY savecount ASC';
+    robSaveCountDesc: result:=' ORDER BY savecount DESC';
+    robRunCountAsc: result:=' ORDER BY runcount ASC';
+    robRunCountDesc: result:=' ORDER BY runcount DESC';
+    else result:=' ORDER BY title ASC';
+  end;
+end;
+
+//IN THIER ORDER
+//TABLE1 RCDATA table1-regexlib.txt
+//TABLE2 RCDATA table2-valuetype.txt
+//INSERTS2 RCDATA tableinsert-valuetypes.txt
+//TABLE3 RCDATA table3-settings.txt
+procedure TFDSqliteManager.LoadDBCreateCommands(var strs: TStringList);
+var
+  ResStream: TResourceStream;
+  tmp1, tmp2: TStringList;
+  i: Integer;
+begin
+
+  if(strs = nil) or (not Assigned(strs)) then begin
+    exit;
+  end;
+
+  strs.Clear;
+  tmp1:=TStringList.Create;
+  tmp2:=TStringList.Create;
+
+  ResStream := TResourceStream.Create(hInstance, 'DBTEMPLATE', RT_RCDATA);
+  try
+
+      tmp1.LoadFromStream(ResStream);
+
+      for i := 0 to tmp1.Count - 1 do begin
+
+         if(tmp1[i] = '----------') then begin
+            strs.Add(tmp2.Text);
+            tmp2.Clear;
+            continue;
+         end
+         else begin
+           tmp2.Add(tmp1[i]);
+         end;
+
+      end;
+
+  finally
+     tmp1.Free;
+     tmp2.Free;
+     ResStream.Free;
+  end;
+
+end;
+
+function TFDSqliteManager.IfThen(b: boolean; trueint, falseint: Integer): Integer;
+begin
+  if(b) then result:=trueint
+  else result:=falseint;
+end;
+
+
+
+
 procedure TFDSqliteManager.GetRegexs(var appRegexes: TList<TAppRegex>;
           out errormessage: string;
           out success: boolean;
@@ -343,76 +441,303 @@ begin
 
 end;
 
-function TFDSqliteManager.RegexsOrderByToString(orderby: TRegexsOrderBy): string;
+
+
+
+procedure TFDSqliteManager.GetSettings(var settings: TDictionary<string, TAppSetting>;
+          out errormessage: string;
+          out success: boolean);
+var
+  setting: TAppSetting;
 begin
 
-  case orderby of
-    robTitleAsc: result:=' ORDER BY title ASC';
-    robTitleDesc: result:=' ORDER BY title DESC';
-    robDateCreatedAsc: result:=' ORDER BY created ASC';
-    robDateCreatedDesc: result:=' ORDER BY created DESC';
-    robModifiedAsc: result:=' ORDER BY modified ASC';
-    robModifiedDesc: result:=' ORDER BY modified DESC';
-    robOpenCountAsc: result:=' ORDER BY opencount ASC';
-    robOpenCoundDesc: result:=' ORDER BY opencount DESC';
-    robSaveCountAsc:  result:=' ORDER BY savecount ASC';
-    robSaveCountDesc: result:=' ORDER BY savecount DESC';
-    robRunCountAsc: result:=' ORDER BY runcount ASC';
-    robRunCountDesc: result:=' ORDER BY runcount DESC';
-    else result:=' ORDER BY title ASC';
-  end;
+   try
+     settings.Clear;
+
+     try
+       _query.Params.Clear;
+       _query.SQL.Text:='SELECT settingid, settingname, settingvalue, valuetypeid FROM main.settings WHERE active=1';
+
+       try
+         _query.Open;
+          while not _query.Eof do begin
+               setting:=TAppSetting.Create;
+               setting.SettingName:=_query.FieldByName('settingname').AsString;
+               setting.SettingValue:=_query.FieldByName('settingvalue').AsString;
+               setting.SettingName:=_query.FieldByName('settingname').AsString;
+               setting.SettingID:=_query.FieldByName('settingid').AsInteger;
+               setting.SettingType:=TAppSettingType(_query.FieldByName('valuetypeid').AsInteger);
+
+               if not (settings.ContainsKey(setting.SettingName)) then begin
+                  settings.Add(setting.SettingName, setting);
+               end;
+
+               _query.Next;
+          end;
+
+       except
+         On E: Exception do begin
+           errormessage:=E.Message;
+           success:=false;
+           exit;
+         end;
+       end;
+
+     finally
+       _query.Close;
+     end;
+
+     errormessage:='';
+     success:=true;
+
+   except
+      On Ex: Exception do begin
+        errormessage:=Ex.Message;
+        success:=false;
+        exit;
+      end;
+   end;
+
 end;
 
-//IN THIER ORDER
-//TABLE1 RCDATA table1-regexlib.txt
-//TABLE2 RCDATA table2-valuetype.txt
-//INSERTS2 RCDATA tableinsert-valuetypes.txt
-//TABLE3 RCDATA table3-settings.txt
-procedure TFDSqliteManager.LoadDBCreateCommands(var strs: TStringList);
+procedure TFDSqliteManager.DeleteSetting(out errormessage: string;
+                                       out success: boolean;
+                                       SettingID: Int64 = -1;
+                                       SettingName: string = '');
 var
-  ResStream: TResourceStream;
-  tmp1, tmp2: TStringList;
-  i: Integer;
+  cmd: string;
 begin
 
-  if(strs = nil) or (not Assigned(strs)) then begin
+   SettingName := Trim(SettingName);
+
+  if (SettingID = 0) and (Length(SettingName) = 0) then begin
+    success:=false;
+    errormessage:='Must supply at leadt one identifier';
     exit;
   end;
 
-  strs.Clear;
-  tmp1:=TStringList.Create;
-  tmp2:=TStringList.Create;
+   try
 
-  ResStream := TResourceStream.Create(hInstance, 'DBTEMPLATE', RT_RCDATA);
-  try
-
-      tmp1.LoadFromStream(ResStream);
-
-      for i := 0 to tmp1.Count - 1 do begin
-
-         if(tmp1[i] = '----------') then begin
-            strs.Add(tmp2.Text);
-            tmp2.Clear;
-            continue;
-         end
-         else begin
-           tmp2.Add(tmp1[i]);
-         end;
-
+      if (SettingID > 0) then begin
+        cmd:='DELETE FROM main.settings WHERE settingid=:SETTINGID;';
+        _conn.ExecSQL(cmd, [SettingID]);
+      end
+      else begin
+        cmd:='DELETE FROM main.settings WHERE settingname=:SETTINGNAME;';
+        _conn.ExecSQL(cmd, [SettingName]);
       end;
 
-  finally
-     tmp1.Free;
-     tmp2.Free;
-     ResStream.Free;
-  end;
+    except
+      on E: Exception do begin
+        errormessage:=E.Message;
+        success:=false;
+        exit;
+      end;
+    end;
 
+
+  errormessage:='';
+  success:=true;
 end;
 
-function TFDSqliteManager.IfThen(b: boolean; trueint, falseint: Integer): Integer;
+
+
+procedure TFDSqliteManager.UpdateSetting(appSetting: TAppSetting; Active: boolean; out errormessage: string; out success: boolean);
+var
+  cmd: TStringList;
+  actv: Integer;
+  affected: Integer;
 begin
-  if(b) then result:=trueint
-  else result:=falseint;
+
+  if(Length(appSetting.SettingName)=0) then begin
+    success:=false;
+    errormessage:='';
+
+  end;
+
+  cmd:=TStringList.Create;
+  try
+    cmd.Add('UPDATE main.settings SET ');
+    cmd.Add('settingvalue=:SETTINGVALUE, ');
+    cmd.Add('active=:ACTIVE ');
+    cmd.Add('WHERE settingname=:SETTINGNAME;');
+    actv:=0;
+    if(Active=true) then actv:=1;
+
+
+    try
+
+      affected:=_conn.ExecSQL(cmd.Text, [appSetting.SettingValue,
+                                 actv,
+                                 appSetting.SettingName]);
+
+      if(affected=0) then begin
+          //Do insert
+          self.InsertSetting(appSetting, errormessage, success);
+      end;
+
+    except
+      on E: Exception do begin
+        errormessage:=E.Message;
+        success:=false;
+        exit;
+      end;
+    end;
+  finally
+    cmd.Free;
+  end;
+
+  errormessage:='';
+  success:=true;
+end;
+
+
+procedure TFDSqliteManager.UpdateSettings(appSettings: TDictionary<string, TAppSetting>; out errormessage: string; out success: boolean);
+var
+  cmd: TStringList;
+  Item: TPair<string, TAppSetting>;
+  affected: Integer;
+  tmp: TAppSetting;
+begin
+
+   cmd:=TStringList.Create;
+
+   try
+      cmd.Add('UPDATE main.settings SET ');
+      cmd.Add('settingvalue=:SETTINGVALUE, ');
+      cmd.Add('active=:ACTIVE ');
+      cmd.Add('WHERE settingname=:SETTINGNAME;');
+
+      for Item in appSettings do begin
+         if(Length(Item.Value.SettingValue)=0) then continue;
+
+         try
+            affected:=_conn.ExecSQL(cmd.Text, [Item.Value.SettingValue,
+                                 1,
+                                 Item.Value.SettingName]);
+
+            if(affected=0) then begin
+               //Do insert
+               tmp:=Item.Value;
+               self.InsertSetting(tmp, errormessage, success);
+            end;
+
+         except
+           on E: Exception do begin
+             errormessage:=E.Message;
+             success:=false;
+             exit;
+           end;
+         end;
+      end;
+   finally
+     cmd.Free;
+   end;
+
+  errormessage:='';
+  success:=true;
+end;
+
+
+
+procedure TFDSqliteManager.InsertSetting(var appSetting: TAppSetting; out errormessage: string; out success: boolean);
+var
+  cmd: TStringList;
+begin
+
+  cmd:=TStringList.Create;
+  try
+    cmd.Add('INSERT INTO main.settings (settingname, settingvalue, valuetypeid, active) ');
+    cmd.Add('VALUES (:SETTINGNAME, :SETTINGVALUE, :VALUETYPEID, 1)');
+
+    try
+       _conn.ExecSQL(cmd.Text, [appSetting.SettingName,
+                                    appSetting.SettingValue,
+                                    Integer(appSetting.SettingType)]);
+
+       appSetting.SettingID:=Int64(_conn.GetLastAutoGenValue(''));
+    except
+      on E: Exception do begin
+        errormessage:=E.Message;
+        success:=false;
+        exit;
+      end;
+    end;
+
+  finally
+    cmd.Free;
+  end;
+
+  errormessage:='';
+  success:=true;
+end;
+
+
+function TFDSqliteManager.CreateDefaultData: boolean;
+var
+  appSetting: TAppSetting;
+  errormessage: string;
+  success: boolean;
+  appRegex: TAppRegex;
+begin
+   appSetting:=TAppSetting.Create;
+   appRegex:=TAppRegex.Create;
+   try
+      try
+         appSetting.SettingName := 'AutoJumpToFirstResult';
+         appSetting.SettingValue:= 'true';
+         appSetting.SettingType := TAppSettingType.astBool;
+         self.InsertSetting(appSetting, errormessage, success);
+
+         appSetting.SettingName := 'AdjustToDarkMode';
+         appSetting.SettingValue:= 'true';
+         appSetting.SettingType := TAppSettingType.astBool;
+         self.InsertSetting(appSetting, errormessage, success);
+
+         appSetting.SettingName := 'RememberState';
+         appSetting.SettingValue:= 'true';
+         appSetting.SettingType := TAppSettingType.astBool;
+         self.InsertSetting(appSetting, errormessage, success);
+
+
+         appRegex.Title:='IPV4 Address';
+         appRegex.Expression:='\b[0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}\b';
+         appRegex.Flag_IgnoreCase:=true;
+         self.InsertRegex(appRegex, errormessage, success);
+
+         appRegex.Title:='GUID';
+         appRegex.Expression:='[0-9A-F]{8}[-][0-9A-F]{4}[-][0-9A-F]{4}[-][0-9A-F]{4}[-][0-9A-F]{12}';
+         appRegex.Flag_IgnoreCase:=true;
+         self.InsertRegex(appRegex, errormessage, success);
+
+         appRegex.Title:='HTML Comment';
+         appRegex.Expression:='<!--.*?-->';
+         appRegex.Flag_IgnoreCase:=true;
+         self.InsertRegex(appRegex, errormessage, success);
+
+         appRegex.Title:='HTML Tag';
+         appRegex.Expression:='</?[a-z][a-z0-9]*[^<>]*>';
+         appRegex.Flag_IgnoreCase:=true;
+         self.InsertRegex(appRegex, errormessage, success);
+
+         appRegex.Title:='ISO 8601 Date Format';
+         appRegex.Expression:='([0-9]{4})-([0-9]{2})-([0-9]{2})';
+         appRegex.Flag_IgnoreCase:=true;
+         self.InsertRegex(appRegex, errormessage, success);
+
+
+      finally
+         appSetting.Free;
+         appRegex.Free;
+      end;
+
+      result:=true;
+      exit;
+   except
+      result:=false;
+      exit;
+   end;
+
 end;
 
 

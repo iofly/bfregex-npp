@@ -9,7 +9,7 @@ uses
   Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Dialogs, System.ImageList, Vcl.ImgList, Vcl.Menus, Vcl.Samples.Spin,
   DateUtils,
 
-  JclSysInfo, JclFileUtils, PngBitBtn, PngImageList,
+  JclSysInfo, JclFileUtils,
 
   nppplugin, plugin, NppDockingForms,
 
@@ -17,8 +17,7 @@ uses
   FireDAC.UI.Intf, FireDAC.ConsoleUI.Wait, FireDAC.Stan.Intf, FireDAC.Comp.UI,
   FDSqliteTypes, FDSqliteManger, FireDAC.Stan.Def, FireDAC.DApt,
   FireDAC.Phys.SQLiteWrapper.Stat, FireDAC.Stan.ExprFuncs, FireDAC.Phys.SQLiteDef,
-  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async, JvExStdCtrls,
-  JvCheckBox, Vcl.ToolWin;
+  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async;
 
 type
   TfrmMain = class(TNppDockingForm)
@@ -75,6 +74,7 @@ type
     btnSave: TSpeedButton;
     btnNew: TSpeedButton;
     pnlTBJankySpacer: TPanel;
+    btnSettings: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -99,10 +99,10 @@ type
     procedure SynEdit1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure Splitter1Moved(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure btnSettingsClick(Sender: TObject);
   private
 
     FMenuItemCheck: TMenuItemCheck;
-   // const MaxTabIndex = 10;
     globalSelStart: Integer;
     defaultDBFileName: string;
     currentRegexID: Integer;
@@ -112,7 +112,9 @@ type
     sqlMan: TFDSqliteManager;
     ProcessingChanges: boolean;
     darkModeColors: TDarkModeColorsDelphi;
+    settings: TDictionary<string, TAppSetting>;
 
+    procedure RefreshSettings;
     procedure InsertStringAtcaret(MyMemo: TMemo; const MyString: string);
     procedure SetUpHighlighters;
     procedure SetMenuItemCheck(const Value: TMenuItemCheck);
@@ -133,8 +135,7 @@ type
 implementation
 
 uses
-  Vcl.Clipbrd,
-  frmRegexTitleUnit, frmAboutUnit, RegexUtils, SciSupport;
+  Vcl.Clipbrd, frmRegexTitleUnit, frmAboutUnit, RegexUtils, SciSupport, frmSettingsUnit;
 
 
 {$R *.dfm}
@@ -142,10 +143,11 @@ uses
 //todo ability to back up database file
 //todo status display if unable to create database file
 //todo restore previous state between runtimes , settings, tab index and text, load last regex, isdirty etc.
+
 //todo auto scroll to first result
-//todo ignore duplicates for list full match doesn't work
-//todo detect and adapt to darkmode
-//make text highlighers darker for dark mode because the textitself is bright making bright highlighters confuses and hard to see text.
+//DONE ignore duplicates for list full match doesn't work
+//DONE todo detect and adapt to darkmode
+//DONE make text highlighers darker for dark mode because the textitself is bright making bright highlighters confuses and hard to see text.
 procedure TfrmMain.OnWM_NOTIFY(var msg: TWMNotify);
 begin
   inherited;
@@ -172,11 +174,12 @@ begin
    self.defaultDBFileName:=GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
    selectSingleList:=TList<TAppRegex>.Create;
    sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
+
+   settings:=TDictionary<string, TAppSetting>.Create;
+   self.RefreshSettings;
    self.DoSearch('');
 
- //  if(NPlugin.IsDarkMode) then begin
-    //  NPlugin.ApplyCurrentTheme;
- //  end;
+
 
 end;
 
@@ -184,8 +187,18 @@ procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   inherited;
 
+  settings.Free;
   selectSingleList.Free;
   sqlMan.Free;
+end;
+
+procedure TfrmMain.RefreshSettings;
+var
+   errormessage: string;
+   success: boolean;
+begin
+   settings.Clear;
+   sqlMan.GetSettings(settings, errormessage, success);
 end;
 
 procedure TfrmMain.FormHide(Sender: TObject);
@@ -194,27 +207,25 @@ begin
 end;
 
 procedure TfrmMain.FormShow(Sender: TObject);
-
 var
    dmc: TDarkModeColors;
-   delphiColors: TDarkModeColorsDelphi;
    msg_param: PDarkModeColors;
   // dt: TDateTime;
    res: NativeInt;
 begin
    inherited;
-  if(NPLugin.IsDarkMode) then begin
+  if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
      //ShowMessage('darkmode enabled');
      msg_param:=@dmc;
      res:=NPLugin.Npp_Send(NPPM_GETDARKMODECOLORS, SizeOf(TDarkModeColors), LPARAM(msg_param));
      if(res = 1) then begin
-         delphiColors:=NPLugin.GetDarkModeColorsDelphi(dmc);
+         darkModeColors:=NPLugin.GetDarkModeColorsDelphi(dmc);
      end;
 
-     self.ApplyDarkColorScheme(true, delphiColors);
+     self.ApplyDarkColorScheme(true, darkModeColors);
   end
   else begin
-      self.ApplyDarkColorScheme(false, delphiColors);
+      self.ApplyDarkColorScheme(false, darkModeColors);
   end;
 
 end;
@@ -224,8 +235,18 @@ var
   frmAbout: TfrmAbout;
 begin
   inherited;
+
   frmAbout:=TfrmAbout.Create(Npp);
   try
+
+      if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
+         frmAbout.Color:=self.darkModeColors.softerBackground;
+         frmAbout.GroupBox1.Font.Color:=self.darkModeColors.text;
+         frmAbout.Label1.Font.Color:=self.darkModeColors.text;
+         frmAbout.Label2.Font.Color:=self.darkModeColors.text;
+         frmAbout.Label3.Font.Color:=self.darkModeColors.text;
+         frmAbout.btnOk.Font.Color:=self.darkModeColors.text;
+      end;
     frmAbout.ShowModal;
   finally
     frmAbout.Free;
@@ -244,6 +265,8 @@ begin
   inherited;
    currentRegexID:=0;
    currentRegexTitle:='';
+   currentRegexIsDirty:=false;
+
    lblCurrentRegex.Caption:='(Untitled)';
    SynEdit1.Text:='';
 
@@ -254,28 +277,40 @@ begin
    cbroExplicitCapture.Checked:=false;
    cbroNotEmpty.Checked:=false;
 
-    selectSingleList.Clear;
-    currentRegexID:=0;
-    currentRegexTitle:='';
-    currentRegexIsDirty:=false;
+   selectSingleList.Clear;
 end;
 
 procedure TfrmMain.SetUpHighlighters;
+var
+   isdarkmode: boolean;
 begin
+
+   isdarkmode:=NPlugin.IsDarkMode and (settings['AdjustToDarkMode'].AsBool);
+
     NPlugin.Sci_Send(SCI_INDICSETSTYLE, 1, INDIC_ROUNDBOX);
-    NPlugin.Sci_Send(SCI_INDICSETFORE, 1, $00FF00);//$FFAAFF);
+    if(isdarkmode) then
+       NPlugin.Sci_Send(SCI_INDICSETFORE, 1, $008800)
+    else
+       NPlugin.Sci_Send(SCI_INDICSETFORE, 1, $00FF00);//$FFAAFF);
+
     NPlugin.Sci_Send(SCI_INDICSETALPHA, 1, 127 );
     NPlugin.Sci_Send(SCI_INDICSETOUTLINEALPHA, 1, 255 );
     NPlugin.Sci_Send(SCI_INDICSETUNDER, 1, 1);
 
     NPlugin.Sci_Send(SCI_INDICSETSTYLE, 2, INDIC_ROUNDBOX);
-    NPlugin.Sci_Send(SCI_INDICSETFORE, 2, $00FFFF); //$FF8888);
+    if(isdarkmode) then
+       NPlugin.Sci_Send(SCI_INDICSETFORE, 2, $880000)
+    else
+       NPlugin.Sci_Send(SCI_INDICSETFORE, 2, $00FFFF);
     NPlugin.Sci_Send(SCI_INDICSETALPHA, 2, 255);
     NPlugin.Sci_Send(SCI_INDICSETOUTLINEALPHA, 2, 255 );
     NPlugin.Sci_Send(SCI_INDICSETUNDER, 2, 1);
 
     NPlugin.Sci_Send(SCI_INDICSETSTYLE, 3, INDIC_ROUNDBOX);
-    NPlugin.Sci_Send(SCI_INDICSETFORE, 3, $444444);//$AAFFAA);
+    if(isdarkmode) then
+       NPlugin.Sci_Send(SCI_INDICSETFORE, 3, $ffffff)
+    else
+       NPlugin.Sci_Send(SCI_INDICSETFORE, 3, $444444);
     NPlugin.Sci_Send(SCI_INDICSETALPHA, 3, 24);
     NPlugin.Sci_Send(SCI_INDICSETOUTLINEALPHA, 3, 255 );
     NPlugin.Sci_Send(SCI_INDICSETUNDER, 3, 1);
@@ -384,6 +419,9 @@ var
   resultsAsText: TStringList;
   resultsAsTextSortedShadow: TStringList;
   tmp: Integer;
+  groupIndex: Integer;
+
+
 begin
   inherited;
 
@@ -393,13 +431,10 @@ begin
 
   globalSelStart:=0;
   resultsAsText:=TStringList.Create;
-  resultsAsTextSortedShadow:=nil;
+  resultsAsTextSortedShadow:=TStringList.Create;
+  resultsAsTextSortedShadow.Sorted:=true;
+  resultsAsTextSortedShadow.Duplicates:=dupIgnore;
 
-  if(cbIgnoreDuplicates.Checked) then begin
-     resultsAsTextSortedShadow:=TStringList.Create;
-     resultsAsTextSortedShadow.Sorted:=true;
-     resultsAsTextSortedShadow.Duplicates:=dupIgnore;
-  end;
 
   self.mmoResults.Lines.BeginUpdate;
   TreeView1.Items.BeginUpdate;
@@ -412,7 +447,7 @@ begin
       exit;
     end;
 
-    selLength:= 0;// NPlugin.GetSelLength;
+    selLength:= 0;
 
    // if(selLength<=0) then
       useText:=NPlugin.GetText;
@@ -422,10 +457,6 @@ begin
     ClearHighlighters;
     SetUpHighlighters;
     NPlugin.Sci_Send(SCI_SETINDICATORCURRENT, 1, 0);
-
-    //<(“[^”]*”|'[^’]*’|[^'”>])*>
-    //<a\s+href=(?:"([^"]+)"|'([^']+)').*?>(.*?)</a>
-    //<a [^>]*href=['"](.*?)['"].*?>(.*?)</a>
 
     global_group_index:=0;
     hilitegroups:=true;
@@ -440,7 +471,7 @@ begin
 
     matches:=GetMatches(SynEdit1.Text, useText, success, errormessage, opts);
     selstart:=NPlugin.GetSelStart;
-    globalSelStart:=0;//selStart;
+    globalSelStart:=0;
 
     if(selLength = 0) then
       selstart:=0;
@@ -461,9 +492,11 @@ begin
           if ((matches[i].Groups.Count>1) and (hilitegroups = true)) then begin
             for g := 1 to matches[i].Groups.Count-1 do begin
 
-              if (not matches[i].Groups[g].Success) then continue;
+              if (not matches[i].Groups[g].Success) then
+              continue;
 
-              if(Length(matches[i].Groups[g].Value) = 0) then continue;
+              if(Length(matches[i].Groups[g].Value) = 0) then
+              continue;
 
               if(global_group_index mod 2 = 0) then
                  NPlugin.Sci_Send(SCI_SETINDICATORCURRENT, 1, 0)
@@ -509,21 +542,40 @@ begin
 
         end;
 
-        if(rbListMatchTypeGroup.Checked) then begin
+
+        {try
            for i := 0 to matches.Count-1 do begin
-              if(matches[i].Groups.Count >= spinGroupToList.Value) then begin
-                  if (cbIgnoreEmptyGroups.Checked) and (Length(matches[i].Groups[spinGroupToList.Value].Value) = 0) then continue;
+            self.LogItem('match[' + IntToStr(i) + ']');
+            self.LogItem('    value = ' + matches[i].Value);
+            for g := 0 to matches[i].Groups.Count-1 do begin
+                self.LogItem('        group['+IntToStr(g)+'].Value = ' + matches[i].Groups[g].Value);
+            end;
+           end;
+        except
+            mt:=matches[i];
+           self.LogItem('err match:=' + matches[i].Value);
+        end; }
+
+
+        if(rbListMatchTypeGroup.Checked) then begin
+           groupIndex:=spinGroupToList.Value;
+           for i := 0 to matches.Count-1 do begin
+               if(matches[i].Groups.Count > groupIndex) then begin
+                  if (cbIgnoreEmptyGroups.Checked) and (Length(matches[i].Groups[groupIndex].Value) = 0) then
+                     continue;
 
                   if(cbIgnoreDuplicates.Checked) then begin
-                     if(resultsAsTextSortedShadow.Find(matches[i].Groups[spinGroupToList.Value].Value, tmp)) then
-                       continue;
-                     resultsAsTextSortedShadow.Add(matches[i].Groups[spinGroupToList.Value].Value);
+                        if(resultsAsTextSortedShadow.Find(matches[i].Groups[groupIndex].Value, tmp)) then
+                          continue;
+                        resultsAsTextSortedShadow.Add(matches[i].Groups[groupIndex].Value);
+                        resultsAsText.Add(matches[i].Groups[groupIndex].Value);
                    end
                    else begin
-                      resultsAsText.Add(matches[i].Groups[spinGroupToList.Value].Value);
+                      resultsAsText.Add(matches[i].Groups[groupIndex].Value);
                    end;
-              end;
+               end;
            end;
+
         end
         else if(rbListMatchTypeFull.Checked) then begin
            for i := 0 to matches.Count-1 do begin
@@ -531,40 +583,21 @@ begin
            end;
         end;
 
+    end;
 
-
-          {  if (g=spinGroupToList.Value) then begin
-
-
-                if(cbIgnoreDuplicates.Checked) then begin
-                  if(resultsAsTextSortedShadow.Find(matches[i].Groups[g].Value, tmp)) then
-                    continue;
-                  resultsAsTextSortedShadow.Add(matches[i].Groups[g].Value);
-                end;
-
-               resultsAsText.Add(matches[i].Groups[g].Value);
-            end;}
-
-
-
+    //If on lib page go to results page
+    if(resultsAsText.Count>0) then begin
+       if(self.pcResults.ActivePageIndex = 2) then begin
+          self.pcResults.ActivePageIndex := 0;
+       end;
     end;
 
   finally
-
-      if(rbListMatchTypeGroup.Checked) then begin
-          self.mmoResults.Text := resultsAsTextSortedShadow.Text;
-      end
-      else begin
-          self.mmoResults.Text := resultsAsText.Text;
-      end;
-
-
-    if(resultsAsTextSortedShadow <> nil) then
+      self.mmoResults.Text := resultsAsText.Text;
       resultsAsTextSortedShadow.Free;
-
-    resultsAsText.Free;
-    self.mmoResults.Lines.EndUpdate;
-    TreeView1.Items.EndUpdate;
+      resultsAsText.Free;
+      self.mmoResults.Lines.EndUpdate;
+      TreeView1.Items.EndUpdate;
   end;
 
 end;
@@ -645,6 +678,14 @@ begin
 
     frmRegexTitle:=TfrmRegexTitle.Create(Npp);
     try
+
+      if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
+         frmRegexTitle.Color:=self.darkModeColors.softerBackground;
+         frmRegexTitle.edRegexTitle.Color:=self.darkModeColors.softerBackground;
+         frmRegexTitle.edRegexTitle.Font.Color:=self.darkModeColors.text;
+         frmRegexTitle.Label1.Font.Color:=self.darkModeColors.Text;
+      end;
+
        modalresult:=frmRegexTitle.ShowModal;
        if(modalresult <> mrOk) then begin
          exit;
@@ -757,6 +798,90 @@ begin
   inherited;
 
   self.DoSearch(edSearchRegexLib.Text);
+end;
+
+procedure TfrmMain.btnSettingsClick(Sender: TObject);
+var
+   frmSettings: TfrmSettings;
+   mr: TModalResult;
+   errormessage: string;
+   success: boolean;
+   appsetting: TAppSetting;
+begin
+  inherited;
+
+   frmSettings:=TfrmSettings.Create(Npp);
+   try
+
+
+
+     self.RefreshSettings;
+
+     if(settings.ContainsKey('AutoJumpToFirstResult')) then
+         frmSettings.cbAutoJumpToResult.Checked:=settings['AutoJumpToFirstResult'].AsBool;
+     if(settings.ContainsKey('AdjustToDarkMode')) then
+         frmSettings.cbAdjustToDarkMode.Checked:=settings['AdjustToDarkMode'].AsBool;
+     if(settings.ContainsKey('RememberState')) then
+         frmSettings.cbRememberState.Checked:=settings['RememberState'].AsBool;
+
+     if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
+       frmSettings.Color:=self.darkModeColors.softerBackground;
+     end;
+
+
+     mr:=frmSettings.ShowModal;
+
+     if(mr = mrOk) then begin
+
+      if(settings.ContainsKey('AutoJumpToFirstResult')) then begin
+         settings['AutoJumpToFirstResult'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAutoJumpToResult.Checked, true));
+      end
+      else begin
+         settings.Add('AutoJumpToFirstResult', TAppSetting.Create('AutoJumpToFirstResult'));
+         settings['AutoJumpToFirstResult'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAutoJumpToResult.Checked, true));
+         settings['AutoJumpToFirstResult'].SettingType:=astBool;
+      end;
+
+
+
+      if(settings.ContainsKey('AdjustToDarkMode')) then begin
+         settings['AdjustToDarkMode'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAdjustToDarkMode.Checked, true))
+      end
+      else begin
+         settings.Add('AdjustToDarkMode', TAppSetting.Create('AdjustToDarkMode'));
+         settings['AdjustToDarkMode'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAdjustToDarkMode.Checked, true));
+         settings['AdjustToDarkMode'].SettingType:=astBool;
+      end;
+
+
+      if(settings.ContainsKey('RememberState')) then begin
+         settings['RememberState'].SettingValue := Lowercase(BoolToStr(frmSettings.cbRememberState.Checked, true))
+      end
+      else begin
+         settings.Add('RememberState', TAppSetting.Create('RememberState'));
+         settings['RememberState'].SettingValue := Lowercase(BoolToStr(frmSettings.cbRememberState.Checked, true));
+         settings['RememberState'].SettingType:=astBool;
+      end;
+
+
+      //if(settings['AdjustToDarkMode'].SettingValue = 'false') then begin
+
+
+         NPlugin.DoNppnDarkModeChanged;
+
+        // self.ApplyDarkColorScheme(false, self.darkModeColors);
+      //end;
+
+
+
+
+      sqlman.UpdateSettings(settings, errormessage, success);
+     end;
+   finally
+     frmSettings.Free;
+   end;
+
+   self.RefreshSettings;
 end;
 
 procedure TfrmMain.LogItem(str: string);
@@ -1066,12 +1191,12 @@ begin
 end;
 
 procedure TfrmMain.ApplyDarkColorScheme(isDarkMode: boolean; delphiColors: TDarkModeColorsDelphi);
-var
-   drkCl: TColor;
+{var
+   drkCl: TColor;}
 begin
 //exit;
 
-   if(not isDarkMode) then begin
+   if(not isDarkMode) or (settings['AdjustToDarkMode'].AsBool=false) then begin
       self.SynEdit1.Color := clWindow;
       self.lvRegexLib.Color:=clWindow;
       self.ListBox1.Color:=clWindow;
@@ -1115,13 +1240,14 @@ begin
 
       self.Splitter1.Color:=clBtnFace;
       self.Splitter2.Color:=clBtnFace;
+      self.Splitter1.Invalidate;
+      self.Splitter2.Invalidate;
 
       spinGroupToList.Color:=clWindow;
       spinGroupToList.Font.Color:=clWindowText;
 
    end
    else begin
-      drkCl:= $00414141;
 
       self.darkModeColors:=delphiColors;
 
@@ -1144,22 +1270,19 @@ begin
       self.mmoResults.Font.Color:=delphiColors.text;//clWhite;
 
 
+      self.pnlEditor.Color:=delphiColors.softerBackground;
+      self.pnlCfg.Color:=delphiColors.softerBackground;
+      self.pnlRegexCfg.Color:=delphiColors.softerBackground;
+      self.pnlLog.Color:=delphiColors.softerBackground;
+      self.pnlRegexToolbar.Color:=delphiColors.softerBackground;
+      self.pnlRegexOptions.Color:=delphiColors.softerBackground;
+      self.pnlTBJankySpacer.Color:=delphiColors.softerBackground;
+      self.Panel7.Color:=delphiColors.softerBackground;
+      self.Panel8.Color:=delphiColors.softerBackground;
 
-
-
-      self.pnlEditor.Color:=delphiColors.softerBackground;// drkCl;
-      self.pnlCfg.Color:=delphiColors.softerBackground;//drkCl;
-      self.pnlRegexCfg.Color:=delphiColors.softerBackground;//drkCl;
-      self.pnlLog.Color:=delphiColors.softerBackground;//drkCl;
-      self.pnlRegexToolbar.Color:=delphiColors.softerBackground;//drkCl;
-      self.pnlRegexOptions.Color:=delphiColors.softerBackground;//drkCl;
-      self.pnlTBJankySpacer.Color:=delphiColors.softerBackground;//drkCl;
-      self.Panel7.Color:=delphiColors.softerBackground;//drkCl;
-      self.Panel8.Color:=delphiColors.softerBackground;//drkCl;
-
-      self.lblEdit.Font.Color:=delphiColors.text;//clWhite;
-      self.lblCurrentRegex.Font.Color:=delphiColors.text;//clWhite;
-      self.label2.Font.Color:=delphiColors.text;//clWhite;
+      self.lblEdit.Font.Color:=delphiColors.text;
+      self.lblCurrentRegex.Font.Color:=delphiColors.text;
+      self.label2.Font.Color:=delphiColors.text;
 
       self.cbroIgnoreCase.Font.Color:=clWhite;//delphiColors.text;//clWhite;
       self.cbroMultiline.Font.Color:=clWhite;//delphiColors.text;//clWhite;
@@ -1170,7 +1293,6 @@ begin
       self.cbIgnoreEmptyGroups.Font.Color:=clWhite;//delphiColors.text;//clWhite;
       self.cbIgnoreDuplicates.Font.Color:=clWhite;//delphiColors.text;//clWhite;
 
-
       self.Splitter1.Color := delphiColors.softerBackground;
       self.Splitter2.Color := delphiColors.softerBackground;
       self.Splitter1.Invalidate;
@@ -1178,63 +1300,8 @@ begin
 
       spinGroupToList.Color:=delphiColors.softerBackground;
       spinGroupToList.Font.Color:=delphiColors.text;
-     { exit;
-
-
-      self.darkModeColors:=delphiColors;
-
-      self.SynEdit1.Color := drkCl;//delphiColors.pureBackground;
-      self.SynEdit1.Font.Color:=clWhite;
-
-      self.lvRegexLib.Color:=drkCl;//delphiColors.pureBackground;
-      self.lvRegexLib.Font.Color:=clWhite;
-
-      self.ListBox1.Color:=drkCl;//delphiColors.pureBackground;
-      self.ListBox1.Font.Color:=clWhite;
-
-      self.edSearchRegexLib.Color:=drkCl;//delphiColors.pureBackground;
-      self.edSearchRegexLib.Font.Color:=clWhite;
-
-      self.TreeView1.Color:=drkCl;//delphiColors.pureBackground;
-      self.TreeView1.Font.Color:=clWhite;
-
-      self.mmoResults.Color:=drkCl;//delphiColors.pureBackground;
-      self.mmoResults.Font.Color:=clWhite;
-
-      self.pnlEditor.Color:=drkCl;
-      self.pnlCfg.Color:=drkCl;
-      self.pnlRegexCfg.Color:=drkCl;
-      self.pnlLog.Color:=drkCl;
-      self.pnlRegexToolbar.Color:=drkCl;
-      self.pnlRegexOptions.Color:=drkCl;
-      self.pnlTBJankySpacer.Color:=drkCl;
-      self.Panel7.Color:=drkCl;
-      self.Panel8.Color:=drkCl;
-
-
-      self.lblEdit.Font.Color:=clWhite;
-      self.lblCurrentRegex.Font.Color:=clWhite;
-      self.label2.Font.Color:=clWhite;
-
-      self.cbroIgnoreCase.Font.Color:=clWhite;
-      self.cbroMultiline.Font.Color:=clWhite;
-      self.cbroExplicitCapture.Font.Color:=clWhite;
-      self.cbroSingleLine.Font.Color:=clWhite;
-      self.cbroIgnoreWhitespace.Font.Color:=clWhite;
-      self.cbroNotEmpty.Font.Color:=clWhite;
-      self.cbIgnoreEmptyGroups.Font.Color:=clWhite;
-      self.cbIgnoreDuplicates.Font.Color:=clWhite;
-             }
-
-
-
    end;
 
-
-
-
 end;
-
-
 
 end.

@@ -32,20 +32,15 @@ inherited frmMain: TfrmMain
     BevelOuter = bvNone
     Caption = 'pnlEditor'
     TabOrder = 0
-    ExplicitHeight = 437
     object pcResults: TPageControl
       Left = 0
       Top = 0
       Width = 653
       Height = 563
-      ActivePage = TabSheet3
+      ActivePage = TabSheet1
       Align = alClient
       Style = tsFlatButtons
       TabOrder = 0
-      ExplicitLeft = 1
-      ExplicitTop = 1
-      ExplicitWidth = 651
-      ExplicitHeight = 561
       object TabSheet1: TTabSheet
         Caption = 'View Results'
         ImageName = 'tabSheet_ResultItems_16px'
@@ -70,8 +65,6 @@ inherited frmMain: TfrmMain
           TabOrder = 0
           OnDblClick = TreeView1DblClick
           OnDeletion = TreeView1Deletion
-          ExplicitWidth = 643
-          ExplicitHeight = 529
         end
       end
       object TabSheet3: TTabSheet
@@ -90,7 +83,6 @@ inherited frmMain: TfrmMain
           ParentBackground = False
           ParentCtl3D = False
           TabOrder = 0
-          ExplicitWidth = 643
           object rbListMatchTypeFull: TRadioButton
             Left = 11
             Top = 7
@@ -118,7 +110,7 @@ inherited frmMain: TfrmMain
             Width = 90
             Height = 22
             MaxValue = 100
-            MinValue = 1
+            MinValue = 0
             TabOrder = 2
             Value = 1
           end
@@ -157,8 +149,6 @@ inherited frmMain: TfrmMain
           ScrollBars = ssBoth
           TabOrder = 1
           WordWrap = False
-          ExplicitWidth = 643
-          ExplicitHeight = 494
         end
       end
       object TabSheet5: TTabSheet
@@ -175,7 +165,6 @@ inherited frmMain: TfrmMain
           Color = clRed
           ParentBackground = False
           TabOrder = 0
-          ExplicitWidth = 643
           object Label2: TLabel
             Left = 11
             Top = 14
@@ -237,7 +226,6 @@ inherited frmMain: TfrmMain
             item
               Caption = 'Exclude Empty'
             end>
-          Ctl3D = True
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clWindowText
           Font.Height = -13
@@ -254,8 +242,6 @@ inherited frmMain: TfrmMain
           ViewStyle = vsReport
           OnDblClick = mnuRegexEditClick
           OnDeletion = lvRegexLibDeletion
-          ExplicitWidth = 643
-          ExplicitHeight = 365
         end
       end
     end
@@ -271,7 +257,6 @@ inherited frmMain: TfrmMain
     Constraints.MinWidth = 430
     ParentBackground = False
     TabOrder = 1
-    ExplicitHeight = 437
     object pnlRegexCfg: TPanel
       Left = 0
       Top = 0
@@ -446,7 +431,6 @@ inherited frmMain: TfrmMain
         Align = alTop
         BevelOuter = bvNone
         TabOrder = 1
-        ExplicitTop = 49
         object btnAbout: TSpeedButton
           Left = 395
           Top = 0
@@ -529,6 +513,21 @@ inherited frmMain: TfrmMain
           ExplicitTop = 1
           ExplicitHeight = 36
         end
+        object btnSettings: TSpeedButton
+          Left = 355
+          Top = 0
+          Width = 40
+          Height = 38
+          Hint = 'Settings'
+          Align = alRight
+          ImageIndex = 5
+          Images = ImageList1
+          Flat = True
+          OnClick = btnSettingsClick
+          ExplicitLeft = 395
+          ExplicitTop = 1
+          ExplicitHeight = 36
+        end
         object pnlTBJankySpacer: TPanel
           Left = 120
           Top = 0
@@ -537,9 +536,6 @@ inherited frmMain: TfrmMain
           Align = alLeft
           BevelOuter = bvNone
           TabOrder = 0
-          ExplicitLeft = 141
-          ExplicitTop = 7
-          ExplicitHeight = 41
         end
       end
     end
@@ -552,8 +548,6 @@ inherited frmMain: TfrmMain
       BevelOuter = bvNone
       ParentBackground = False
       TabOrder = 1
-      ExplicitTop = 197
-      ExplicitHeight = 340
       object Splitter2: TSplitter
         Left = 0
         Top = 137
@@ -603,8 +597,8 @@ inherited frmMain: TfrmMain
     end
   end
   object imglResultsTree: TImageList
-    Left = 584
-    Top = 342
+    Left = 552
+    Top = 182
     Bitmap = {
       494C010102000800040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
@@ -747,8 +741,8 @@ inherited frmMain: TfrmMain
   end
   object mnuRegexLibraryList: TPopupMenu
     OnPopup = mnuRegexLibraryListPopup
-    Left = 528
-    Top = 241
+    Left = 696
+    Top = 225
     object mnuRegexEdit: TMenuItem
       Caption = '&Edit'
       ShortCut = 13
@@ -764,8 +758,8 @@ inherited frmMain: TfrmMain
     end
   end
   object mnuLog: TPopupMenu
-    Left = 160
-    Top = 317
+    Left = 176
+    Top = 357
     object mnuSaveLog: TMenuItem
       Caption = 'Save Log...'
     end
