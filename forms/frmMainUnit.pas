@@ -17,7 +17,7 @@ uses
   FireDAC.UI.Intf, FireDAC.ConsoleUI.Wait, FireDAC.Stan.Intf, FireDAC.Comp.UI,
   FDSqliteTypes, FDSqliteManger, FireDAC.Stan.Def, FireDAC.DApt,
   FireDAC.Phys.SQLiteWrapper.Stat, FireDAC.Stan.ExprFuncs, FireDAC.Phys.SQLiteDef,
-  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async;
+  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async, Vcl.ToolWin;
 
 type
   TfrmMain = class(TNppDockingForm)
@@ -75,6 +75,11 @@ type
     btnNew: TSpeedButton;
     pnlTBJankySpacer: TPanel;
     btnSettings: TSpeedButton;
+    imglResultsPageControl: TImageList;
+    pnlTabSwitchButtons: TPanel;
+    btnTab2: TSpeedButton;
+    btnTab1: TSpeedButton;
+    btnTab0: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -94,12 +99,13 @@ type
     procedure SynEdit1cChange(Sender: TObject);
     procedure cbroIgnoreCaseClick(Sender: TObject);
     procedure mnuClearLogClick(Sender: TObject);
-  procedure OnWM_NOTIFY(var msg: TWMNotify);
     procedure SynEdit1KeyPress(Sender: TObject; var Key: Char);
     procedure SynEdit1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure Splitter1Moved(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure btnSettingsClick(Sender: TObject);
+    procedure btnTab0Click(Sender: TObject);
+    procedure pcResultsChange(Sender: TObject);
   private
 
     FMenuItemCheck: TMenuItemCheck;
@@ -148,25 +154,27 @@ uses
 //DONE ignore duplicates for list full match doesn't work
 //DONE todo detect and adapt to darkmode
 //DONE make text highlighers darker for dark mode because the textitself is bright making bright highlighters confuses and hard to see text.
-procedure TfrmMain.OnWM_NOTIFY(var msg: TWMNotify);
+procedure TfrmMain.pcResultsChange(Sender: TObject);
 begin
   inherited;
+//
 
- { if(msg.Msg = NPPN_SHUTDOWN) then begin
-     ShowMessage('NPPN_SHUTDOWN received');
-  end
-  else if (msg.Msg = WM_CLOSE) then begin
-     ShowMessage('WCLOSE received');
-  end
-  else if (msg.Msg = WM_QUIT ) then begin
-     ShowMessage('WM_QUIT  received');
-  end
-  else if (msg.Msg = WM_DESTROY ) then begin
-     ShowMessage('WM_DESTROY  received');
-  end;}
+   case self.pcResults.ActivePageIndex of
+      0: begin
+         self.btnTab0.Down:=true;
+      end;
+      1: begin
+        self.btnTab1.Down:=true;
+      end;
+      2: begin
+         self.btnTab2.Down:=true;
+      end;
+   end;
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
+var
+   i: Integer;
 begin
    ProcessingChanges:=false;
    NppDefaultDockingMask := DWS_DF_FLOATING;
@@ -179,8 +187,11 @@ begin
    self.RefreshSettings;
    self.DoSearch('');
 
-
-
+   for i := 0 to self.pcResults.PageCount-1 do begin
+      self.pcResults.Pages[i].TabVisible:=false;
+   end;
+   self.pcResults.ActivePageIndex:=0;
+   self.btnTab0.Down:=true;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -214,6 +225,9 @@ var
    res: NativeInt;
 begin
    inherited;
+
+
+
   if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
      //ShowMessage('darkmode enabled');
      msg_param:=@dmc;
@@ -289,7 +303,7 @@ begin
 
     NPlugin.Sci_Send(SCI_INDICSETSTYLE, 1, INDIC_ROUNDBOX);
     if(isdarkmode) then
-       NPlugin.Sci_Send(SCI_INDICSETFORE, 1, $008800)
+       NPlugin.Sci_Send(SCI_INDICSETFORE, 1, $006600)
     else
        NPlugin.Sci_Send(SCI_INDICSETFORE, 1, $00FF00);//$FFAAFF);
 
@@ -589,6 +603,15 @@ begin
     if(resultsAsText.Count>0) then begin
        if(self.pcResults.ActivePageIndex = 2) then begin
           self.pcResults.ActivePageIndex := 0;
+          self.btnTab0.Down:=true;
+
+          if(self.TreeView1.Items.Count>0) then begin
+            self.TreeView1.SetFocus;
+            self.TreeView1.Selected:=self.TreeView1.Items[0];
+             TreeView1DblClick(nil);
+          end;
+
+
        end;
     end;
 
@@ -806,14 +829,11 @@ var
    mr: TModalResult;
    errormessage: string;
    success: boolean;
-   appsetting: TAppSetting;
 begin
   inherited;
 
    frmSettings:=TfrmSettings.Create(Npp);
    try
-
-
 
      self.RefreshSettings;
 
@@ -826,9 +846,11 @@ begin
 
      if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
        frmSettings.Color:=self.darkModeColors.softerBackground;
+       frmSettings.cbAutoJumpToResult.Font.Color:=clwhite;//self.darkModeColors.text;
      end;
 
-
+     self.sqlMan.Disconnect;
+     self.sqlMan.Free;
      mr:=frmSettings.ShowModal;
 
      if(mr = mrOk) then begin
@@ -879,9 +901,17 @@ begin
      end;
    finally
      frmSettings.Free;
+     sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
    end;
 
    self.RefreshSettings;
+end;
+
+procedure TfrmMain.btnTab0Click(Sender: TObject);
+begin
+  inherited;
+  self.pcResults.ActivePageIndex:=(sender as TSpeedButton).Tag;
+  (sender as TSpeedButton).Down:=true;
 end;
 
 procedure TfrmMain.LogItem(str: string);
@@ -1163,17 +1193,8 @@ begin
   NPlugin.Sci_Send(SCI_SETSELECTIONSTART, globalSelStart + rng.Start - 1, 0);
   NPlugin.Sci_Send(SCI_SETSELECTIONEND, globalSelStart + rng.Start + rng.Length - 1 , 0);
 
-
   NPlugin.Sci_Send(SCI_GOTOPOS, globalSelStart + rng.Start + rng.Length - 1, 0);
-
   NPlugin.Sci_Send(SCI_GOTOPOS, globalSelStart + rng.Start, 0);
-
-
-
-
-
-  //NPlugin.Sci_Send(SCI_SETSELECTIONSTART, globalSelStart + rng.Start - 1, 0);
-  //NPlugin.Sci_Send(SCI_SETSELECTIONEND, globalSelStart + rng.Start - 1, 0);
 end;
 
 procedure TfrmMain.TreeView1Deletion(Sender: TObject; Node: TTreeNode);
@@ -1191,10 +1212,7 @@ begin
 end;
 
 procedure TfrmMain.ApplyDarkColorScheme(isDarkMode: boolean; delphiColors: TDarkModeColorsDelphi);
-{var
-   drkCl: TColor;}
 begin
-//exit;
 
    if(not isDarkMode) or (settings['AdjustToDarkMode'].AsBool=false) then begin
       self.SynEdit1.Color := clWindow;
@@ -1211,8 +1229,6 @@ begin
       self.TreeView1.Font.Color:=clWindowText;
       self.mmoResults.Font.Color:=clWindowText;
 
-
-
       self.pnlEditor.Color:=clBtnFace;
       self.pnlCfg.Color:=clBtnFace;
       self.pnlRegexCfg.Color:=clBtnFace;
@@ -1222,7 +1238,6 @@ begin
       self.pnlTBJankySpacer.Color:=clBtnFace;
       self.Panel7.Color:=clBtnFace;
       self.Panel8.Color:=clBtnFace;
-
 
       self.lblEdit.Font.Color:=clWindowText;
       self.lblCurrentRegex.Font.Color:=clWindowText;
@@ -1237,7 +1252,6 @@ begin
       self.cbIgnoreEmptyGroups.Font.Color:=clWindowText;
       self.cbIgnoreDuplicates.Font.Color:=clWindowText;
 
-
       self.Splitter1.Color:=clBtnFace;
       self.Splitter2.Color:=clBtnFace;
       self.Splitter1.Invalidate;
@@ -1246,6 +1260,22 @@ begin
       spinGroupToList.Color:=clWindow;
       spinGroupToList.Font.Color:=clWindowText;
 
+      self.pnlEditor.Color:=clBtnFace;
+      self.pnlTabSwitchButtons.Color:=clBtnFace;
+
+      self.btnTab0.Font.Color:=clWindowText;
+      self.btnTab1.Font.Color:=clWindowText;
+      self.btnTab2.Font.Color:=clWindowText;
+
+      self.btnTab0.Transparent:=false;
+      self.btnTab1.Transparent:=false;
+      self.btnTab2.Transparent:=false;
+
+      self.Invalidate;
+
+      self.btnTab0.Transparent:=true;
+      self.btnTab1.Transparent:=true;
+      self.btnTab2.Transparent:=true;
    end
    else begin
 
@@ -1300,6 +1330,22 @@ begin
 
       spinGroupToList.Color:=delphiColors.softerBackground;
       spinGroupToList.Font.Color:=delphiColors.text;
+
+      self.pnlEditor.Color:=delphiColors.softerBackground;
+      self.pnlTabSwitchButtons.Color:=delphiColors.softerBackground;
+      self.btnTab0.Font.Color:=delphiColors.text;
+      self.btnTab1.Font.Color:=delphiColors.text;
+      self.btnTab2.Font.Color:=delphiColors.text;
+
+      self.btnTab0.Transparent:=false;
+      self.btnTab1.Transparent:=false;
+      self.btnTab2.Transparent:=false;
+
+      self.Invalidate;
+
+      self.btnTab0.Transparent:=true;
+      self.btnTab1.Transparent:=true;
+      self.btnTab2.Transparent:=true;
    end;
 
 end;

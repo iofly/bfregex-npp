@@ -18,13 +18,15 @@ type TFDSqliteManager = class
       class function CreateDBPath(dir: string): boolean;
       procedure LoadDBCreateCommands(var strs: TStringList);
       procedure ConnectToDatabase(dbfilename: string);
-      procedure Disconnect;
+
       function RegexsOrderByToString(orderby: TRegexsOrderBy): string;
       function DefaultDir: string;
       function CreateDatabaseFile(out errorMessage: string): boolean;
       function IfThen(b: boolean; trueint, falseint: Integer): Integer;
       function CreateDefaultData: boolean;
     public
+      procedure Disconnect;
+      procedure Reconnect;
       procedure InsertRegex(var appRegex: TAppRegex; out errormessage: string; out success: boolean);
       procedure UpdateRegex(appRegex: TAppRegex; out errormessage: string; out success: boolean);
       procedure DeleteRegex(regexID: Integer; out errormessage: string; out success: boolean);
@@ -121,7 +123,14 @@ end;
 
 procedure TFDSqliteManager.Disconnect;
 begin
+  _conn.Connected:=false;
   _conn.Close;
+  _link.Release;
+end;
+
+procedure TFDSqliteManager.Reconnect;
+begin
+  _conn.Open;
 end;
 
 function TFDSqliteManager.CreateDatabaseFile(out errorMessage: string): boolean;
