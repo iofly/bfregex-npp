@@ -52,7 +52,7 @@ type
   end;
 
 type
-  TAppSettingType = (astInteger, astString, astBool, astDateTime);
+  TAppSettingType = (astInteger = 1, astString = 2, astBool = 3, astDateTime = 4);
 
   TAppSetting = class
      SettingName: string;

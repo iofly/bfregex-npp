@@ -27,8 +27,10 @@ type
     SpinEdit1: TSpinEdit;
     Label3: TLabel;
     OpenDialog1: TOpenDialog;
+    Label4: TLabel;
     procedure btnRegexBackupClick(Sender: TObject);
     procedure btnRegexRestoreClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     function PadInt(i: Integer; width: Integer): string;
     { Private declarations }
@@ -71,6 +73,14 @@ begin
    end;
 
   end;
+
+end;
+
+procedure TfrmSettings.FormShow(Sender: TObject);
+begin
+  inherited;
+  self.Activate;
+  cbAutoJumpToResult.SetFocus;
 
 end;
 

@@ -13,6 +13,7 @@ object frmSettings: TfrmSettings
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object btnCancel: TButton
@@ -22,7 +23,7 @@ object frmSettings: TfrmSettings
     Height = 25
     Caption = 'Close'
     ModalResult = 2
-    TabOrder = 0
+    TabOrder = 1
   end
   object btnOk: TButton
     Left = 171
@@ -31,7 +32,7 @@ object frmSettings: TfrmSettings
     Height = 25
     Caption = 'Apply Changes'
     ModalResult = 1
-    TabOrder = 1
+    TabOrder = 0
   end
   object Panel1: TPanel
     Left = 0
@@ -42,20 +43,20 @@ object frmSettings: TfrmSettings
     BevelOuter = bvNone
     TabOrder = 2
     object Label2: TLabel
-      Left = 304
+      Left = 279
       Top = 9
       Width = 172
       Height = 13
       Caption = 'Run regular expressions on the first'
     end
     object Label1: TLabel
-      Left = 304
+      Left = 279
       Top = 56
-      Width = 207
+      Width = 267
       Height = 52
       Caption = 
-        'characters. Zero = entire document.'#13#10#13#10' (Running the regex on a ' +
-        'very large '#13#10'document can lead to an unresponsive UI.)'
+        '(Zero = entire document.)'#13#10#13#10'Note: Running the regex on a very l' +
+        'arge '#13#10'document can lead to an unresponsive UI.'
     end
     object Label3: TLabel
       Left = 32
@@ -63,6 +64,13 @@ object frmSettings: TfrmSettings
       Width = 163
       Height = 13
       Caption = '(Some elements cannot be styled)'
+    end
+    object Label4: TLabel
+      Left = 375
+      Top = 30
+      Width = 171
+      Height = 13
+      Caption = 'characters of the current document'
     end
     object cbAutoJumpToResult: TCheckBox
       Left = 16
@@ -95,7 +103,7 @@ object frmSettings: TfrmSettings
       Font.Style = []
       ParentColor = False
       ParentFont = False
-      TabOrder = 1
+      TabOrder = 2
       StyleElements = []
     end
     object cbRememberState: TCheckBox
@@ -112,7 +120,7 @@ object frmSettings: TfrmSettings
       Font.Style = []
       ParentColor = False
       ParentFont = False
-      TabOrder = 2
+      TabOrder = 1
       StyleElements = []
     end
     object GroupBox1: TGroupBox
@@ -121,7 +129,7 @@ object frmSettings: TfrmSettings
       Width = 537
       Height = 69
       Caption = 'Backup and Restore'
-      TabOrder = 3
+      TabOrder = 4
       object btnRegexBackup: TButton
         Left = 16
         Top = 24
@@ -143,15 +151,15 @@ object frmSettings: TfrmSettings
       end
     end
     object SpinEdit1: TSpinEdit
-      Left = 304
+      Left = 279
       Top = 28
-      Width = 105
+      Width = 88
       Height = 22
       Ctl3D = False
       MaxValue = 0
       MinValue = 0
       ParentCtl3D = False
-      TabOrder = 4
+      TabOrder = 3
       Value = 0
     end
   end

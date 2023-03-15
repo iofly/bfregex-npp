@@ -453,7 +453,7 @@ var
   tmp: Integer;
   groupIndex: Integer;
 
-
+   maxChars: Integer;
 begin
   inherited;
 
@@ -481,10 +481,10 @@ begin
 
     selLength:= 0;
 
-   // if(selLength<=0) then
-      useText:=NPlugin.GetText;
-   // else
-   //   useText:=NPlugin.SelectedText;
+    maxChars:=settings.AsInt64('MaxRegexTestTextChars', 0);
+
+    useText:=NPlugin.GetSubText(maxChars);//GetText;
+   
 
     ClearHighlighters;
     SetUpHighlighters;
@@ -863,10 +863,10 @@ begin
      frmSettings.btnRegexBackup.Enabled:=sqlMan.DBIsAccessible;
      frmSettings.btnRegexRestore.Enabled:=sqlMan.DBIsAccessible;
 
-
      frmSettings.cbAutoJumpToResult.Checked:=settings.AsBool('AutoJumpToFirstResult', true);
      frmSettings.cbAdjustToDarkMode.Checked:=settings.AsBool('AdjustToDarkMode', true);
      frmSettings.cbRememberState.Checked:=settings.AsBool('RememberState', true);
+     frmSettings.SpinEdit1.Value := settings.AsInt64('MaxRegexTestTextChars', 0);
 
      if(NPlugin.IsDarkMode) and (settings.AsBool('AdjustToDarkMode', true)) then begin
        frmSettings.Color:=self.darkModeColors.softerBackground;
@@ -875,6 +875,7 @@ begin
        frmSettings.Label1.Font.Color:=self.darkModeColors.text;
        frmSettings.Label2.Font.Color:=self.darkModeColors.text;
        frmSettings.Label3.Font.Color:=self.darkModeColors.text;
+       frmSettings.Label4.Font.Color:=self.darkModeColors.text;
      end;
 
      self.sqlMan.Disconnect;
@@ -885,7 +886,9 @@ begin
          settings.SetBool('AutoJumpToFirstResult', frmSettings.cbAutoJumpToResult.Checked);
          settings.SetBool('AdjustToDarkMode', frmSettings.cbAdjustToDarkMode.Checked);
          settings.SetBool('RememberState', frmSettings.cbRememberState.Checked);
+         settings.SetInt64('MaxRegexTestTextChars', frmSettings.SpinEdit1.Value);
          NPlugin.DoNppnDarkModeChanged;
+         //self.Refresh;
      end;
    finally
        sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);

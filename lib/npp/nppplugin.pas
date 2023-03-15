@@ -634,6 +634,7 @@ type
 
     function SelectedText: nppString;
     function GetText: nppString;
+    function GetSubText(maxLen: Integer): nppString;
     function GetSelStart: Integer;
     function GetSelEnd: Integer;
     function GetSelLength: Integer;
@@ -951,6 +952,31 @@ var Size: NativeInt;
 begin
   Result := '';
   Size := Sci_Send(SCI_GETLENGTH, 0, 0);
+  Inc(Size);
+  SetLength(S,Size);
+  try
+    Sci_Send(SCI_GETTEXT, Size, LPARAM(PWideChar(S)));
+    Result := WideString(S);
+  finally
+    SetLength(S,0);
+  end;
+end;
+
+function TNppPlugin.GetSubText(maxLen: Integer): nppString;
+var Size: NativeInt;
+    S: AnsiString;
+begin
+  Result := '';
+
+
+  if(maxLen = 0) or (maxLen>Size) then begin
+     Size := Sci_Send(SCI_GETLENGTH, 0, 0);
+  end
+  else if maxLen<Size then begin
+     Size:=maxLen;
+  end;
+
+
   Inc(Size);
   SetLength(S,Size);
   try

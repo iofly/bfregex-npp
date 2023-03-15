@@ -50,6 +50,7 @@ type TFDSqliteManager = class
       procedure InsertSetting(var appSetting: TAppSetting; out errormessage: string; out success: boolean);
 
 
+
       Constructor Create(dbfilename : string; CreateIfNotExist: boolean);
       Destructor  Destroy; override;
      published
@@ -507,8 +508,6 @@ begin
       success:=false;
       exit;
    end;
-
-
 
    try
      settings.Clear;
