@@ -2,6 +2,9 @@ unit FDSqliteManger;
 
 interface
 
+
+{$M+}
+
 uses Data.FMTBcd,
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Data.DB, Data.SqlExpr, Data.DbxSqlite, system.DateUtils, System.Generics.Collections,
@@ -15,9 +18,11 @@ type TFDSqliteManager = class
       _query: TFDQuery;
       _dbfilename: string;
       _CreateIfNotExist: boolean;
+      FDBIsAccessible: boolean;
+
       class function CreateDBPath(dir: string): boolean;
       procedure LoadDBCreateCommands(var strs: TStringList);
-      procedure ConnectToDatabase(dbfilename: string);
+      function ConnectToDatabase(dbfilename: string): boolean;
 
       function RegexsOrderByToString(orderby: TRegexsOrderBy): string;
       function DefaultDir: string;
@@ -33,7 +38,9 @@ type TFDSqliteManager = class
       procedure GetRegexs(var appRegexes: TList<TAppRegex>; out errormessage: string; out success: boolean; regexid: Integer = 0; searchText: string = ''; order: TRegexsOrderBy = robTitleAsc);
 
 
-      procedure GetSettings(var settings: TDictionary<string, TAppSetting>; out errormessage: string; out success: boolean);
+      procedure GetSettings(var settings: TSettingsContainer;
+          out errormessage: string;
+          out success: boolean);
       procedure DeleteSetting(out errormessage: string;
                                        out success: boolean;
                                        SettingID: Int64 = -1;
@@ -45,12 +52,17 @@ type TFDSqliteManager = class
 
       Constructor Create(dbfilename : string; CreateIfNotExist: boolean);
       Destructor  Destroy; override;
+     published
+      property DBIsAccessible: boolean read FDBIsAccessible;
+
 end;
 
 implementation
 
 constructor TFDSqliteManager.Create(dbfilename: string; CreateIfNotExist: boolean);
 begin
+   FDBIsAccessible:=false;
+
    _link := TFDPhysSQLiteDriverLink.Create(nil);
    _link.EngineLinkage := slStatic;
    _conn := TFDConnection.Create(nil);
@@ -61,10 +73,10 @@ begin
   _CreateIfNotExist:= CreateIfNotExist;
 
   if (self.CreateDBPath(ExtractFileDir(self._dbfilename))) then begin
-     ConnectToDatabase(dbfilename);
+     FDBIsAccessible:=ConnectToDatabase(dbfilename);
   end
   else begin
-     raise Exception.Create('Failed to created DB file');
+     FDBIsAccessible:=false;
   end;
 end;
 
@@ -90,13 +102,15 @@ begin
       result:=true;
 end;
 
-procedure TFDSqliteManager.ConnectToDatabase(dbfilename: string);
+function TFDSqliteManager.ConnectToDatabase(dbfilename: string): boolean;
 var
    err: string;
 begin
 
-  if(self._conn.Connected) then
+  if(self._conn.Connected) then begin
+   result:=true;
    exit;
+  end;
 
    try
        with self._conn do begin
@@ -114,15 +128,19 @@ begin
             end;
          end;
        end;
-
+       result:=true;
    except
-       raise Exception.Create('Failed to connect to DB file: ' + dbfilename);
+       result:=false;
    end;
 
 end;
 
 procedure TFDSqliteManager.Disconnect;
 begin
+   if not(self.FDBIsAccessible) then begin
+      exit;
+   end;
+
   _conn.Connected:=false;
   _conn.Close;
   _link.Release;
@@ -130,6 +148,10 @@ end;
 
 procedure TFDSqliteManager.Reconnect;
 begin
+   if not(self.FDBIsAccessible) then begin
+      exit;
+   end;
+
   _conn.Open;
 end;
 
@@ -172,6 +194,12 @@ var
   cmd: TStringList;
   UnixUTCDateTime: Int64;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
+
 
   cmd:=TStringList.Create;
   try
@@ -214,6 +242,11 @@ var
   UnixUTCDateTime: Int64;
  // dbregexid: Integer;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
 
   if(appRegex.DBExpressionID=0) then begin
     success:=false;
@@ -269,6 +302,11 @@ procedure TFDSqliteManager.DeleteRegex(regexID: Integer; out errormessage: strin
 var
   cmd: TStringList;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
 
   if(regexID<=0) then begin
     success:=false;
@@ -385,6 +423,11 @@ var
   orderstr: string;
   appr: TAppRegex;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
 
    try
      orderstr:=RegexsOrderByToString(order);
@@ -453,12 +496,19 @@ end;
 
 
 
-procedure TFDSqliteManager.GetSettings(var settings: TDictionary<string, TAppSetting>;
+procedure TFDSqliteManager.GetSettings(var settings: TSettingsContainer;
           out errormessage: string;
           out success: boolean);
 var
   setting: TAppSetting;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
+
+
 
    try
      settings.Clear;
@@ -516,6 +566,11 @@ procedure TFDSqliteManager.DeleteSetting(out errormessage: string;
 var
   cmd: string;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
 
    SettingName := Trim(SettingName);
 
@@ -557,6 +612,11 @@ var
   actv: Integer;
   affected: Integer;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
 
   if(Length(appSetting.SettingName)=0) then begin
     success:=false;
@@ -608,6 +668,11 @@ var
   affected: Integer;
   tmp: TAppSetting;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
 
    cmd:=TStringList.Create;
 
@@ -618,6 +683,7 @@ begin
       cmd.Add('WHERE settingname=:SETTINGNAME;');
 
       for Item in appSettings do begin
+         if(Item.Value = nil) then continue;
          if(Length(Item.Value.SettingValue)=0) then continue;
 
          try
@@ -653,6 +719,12 @@ procedure TFDSqliteManager.InsertSetting(var appSetting: TAppSetting; out errorm
 var
   cmd: TStringList;
 begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
+
 
   cmd:=TStringList.Create;
   try

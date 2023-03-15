@@ -1,4 +1,4 @@
-unit frmMainUnit;
+﻿unit frmMainUnit;
 
 interface
 
@@ -80,6 +80,9 @@ type
     btnTab2: TSpeedButton;
     btnTab1: TSpeedButton;
     btnTab0: TSpeedButton;
+    pnlDBAccessWarning: TPanel;
+    lblDBAccessWarning: TLabel;
+    lblDBFileName: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -118,7 +121,7 @@ type
     sqlMan: TFDSqliteManager;
     ProcessingChanges: boolean;
     darkModeColors: TDarkModeColorsDelphi;
-    settings: TDictionary<string, TAppSetting>;
+    settings: TSettingsContainer;
 
     procedure RefreshSettings;
     procedure InsertStringAtcaret(MyMemo: TMemo; const MyString: string);
@@ -146,11 +149,12 @@ uses
 
 {$R *.dfm}
 
-//todo ability to back up database file
+
 //todo status display if unable to create database file
 //todo restore previous state between runtimes , settings, tab index and text, load last regex, isdirty etc.
 
-//todo auto scroll to first result
+//DONE ability to back up database file
+//DONE auto scroll to first result
 //DONE ignore duplicates for list full match doesn't work
 //DONE todo detect and adapt to darkmode
 //DONE make text highlighers darker for dark mode because the textitself is bright making bright highlighters confuses and hard to see text.
@@ -183,7 +187,7 @@ begin
    selectSingleList:=TList<TAppRegex>.Create;
    sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
 
-   settings:=TDictionary<string, TAppSetting>.Create;
+   settings:=TSettingsContainer.Create;
    self.RefreshSettings;
    self.DoSearch('');
 
@@ -192,6 +196,16 @@ begin
    end;
    self.pcResults.ActivePageIndex:=0;
    self.btnTab0.Down:=true;
+
+   if not (sqlMan.DBIsAccessible) then begin
+      btnSave.Enabled:=false;
+      btnSaveAs.Enabled:=false;
+      self.btnTab2.Visible:=false;
+      lblDBFileName.Caption:=GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
+      self.pnlDBAccessWarning.Visible:=true;
+   end;
+
+
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -228,7 +242,7 @@ begin
 
 
 
-  if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
+  if(NPlugin.IsDarkMode) and (settings.AsBool('AdjustToDarkMode', true)) then begin
      //ShowMessage('darkmode enabled');
      msg_param:=@dmc;
      res:=NPLugin.Npp_Send(NPPM_GETDARKMODECOLORS, SizeOf(TDarkModeColors), LPARAM(msg_param));
@@ -253,7 +267,7 @@ begin
   frmAbout:=TfrmAbout.Create(Npp);
   try
 
-      if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
+      if(NPlugin.IsDarkMode) and (settings.AsBool('AdjustToDarkMode', true)) then begin
          frmAbout.Color:=self.darkModeColors.softerBackground;
          frmAbout.GroupBox1.Font.Color:=self.darkModeColors.text;
          frmAbout.Label1.Font.Color:=self.darkModeColors.text;
@@ -299,7 +313,7 @@ var
    isdarkmode: boolean;
 begin
 
-   isdarkmode:=NPlugin.IsDarkMode and (settings['AdjustToDarkMode'].AsBool);
+   isdarkmode:=NPlugin.IsDarkMode and (settings.AsBool('AdjustToDarkMode', true));
 
     NPlugin.Sci_Send(SCI_INDICSETSTYLE, 1, INDIC_ROUNDBOX);
     if(isdarkmode) then
@@ -381,8 +395,12 @@ begin
 
   try
      istext := Length(self.SynEdit1.Text) > 0;
-     self.btnSave.Enabled := istext;
-     self.btnSaveAs.Enabled := istext;
+
+
+     self.btnSave.Enabled := istext and sqlMan.DBIsAccessible;
+     self.btnSaveAs.Enabled := istext and sqlMan.DBIsAccessible;
+
+
      self.btnRun.Enabled := istext;
      lblEdit.Caption:='Editing *:';
 
@@ -605,10 +623,12 @@ begin
           self.pcResults.ActivePageIndex := 0;
           self.btnTab0.Down:=true;
 
-          if(self.TreeView1.Items.Count>0) then begin
-            self.TreeView1.SetFocus;
-            self.TreeView1.Selected:=self.TreeView1.Items[0];
-             TreeView1DblClick(nil);
+          if(settings['AutoJumpToFirstResult'].AsBool(true)) then begin
+             if(self.TreeView1.Items.Count>0) then begin
+               self.TreeView1.SetFocus;
+               self.TreeView1.Selected:=self.TreeView1.Items[0];
+               TreeView1DblClick(nil);
+             end;
           end;
 
 
@@ -702,7 +722,7 @@ begin
     frmRegexTitle:=TfrmRegexTitle.Create(Npp);
     try
 
-      if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
+      if(NPlugin.IsDarkMode) and (settings.AsBool('AdjustToDarkMode', true)) then begin
          frmRegexTitle.Color:=self.darkModeColors.softerBackground;
          frmRegexTitle.edRegexTitle.Color:=self.darkModeColors.softerBackground;
          frmRegexTitle.edRegexTitle.Font.Color:=self.darkModeColors.text;
@@ -837,16 +857,24 @@ begin
 
      self.RefreshSettings;
 
-     if(settings.ContainsKey('AutoJumpToFirstResult')) then
-         frmSettings.cbAutoJumpToResult.Checked:=settings['AutoJumpToFirstResult'].AsBool;
-     if(settings.ContainsKey('AdjustToDarkMode')) then
-         frmSettings.cbAdjustToDarkMode.Checked:=settings['AdjustToDarkMode'].AsBool;
-     if(settings.ContainsKey('RememberState')) then
-         frmSettings.cbRememberState.Checked:=settings['RememberState'].AsBool;
+     frmSettings.cbAutoJumpToResult.Enabled:=sqlMan.DBIsAccessible;
+     frmSettings.cbAdjustToDarkMode.Enabled:=sqlMan.DBIsAccessible;
+     frmSettings.cbRememberState.Enabled:=sqlMan.DBIsAccessible;
+     frmSettings.btnRegexBackup.Enabled:=sqlMan.DBIsAccessible;
+     frmSettings.btnRegexRestore.Enabled:=sqlMan.DBIsAccessible;
 
-     if(NPlugin.IsDarkMode) and (settings['AdjustToDarkMode'].AsBool) then begin
+
+     frmSettings.cbAutoJumpToResult.Checked:=settings.AsBool('AutoJumpToFirstResult', true);
+     frmSettings.cbAdjustToDarkMode.Checked:=settings.AsBool('AdjustToDarkMode', true);
+     frmSettings.cbRememberState.Checked:=settings.AsBool('RememberState', true);
+
+     if(NPlugin.IsDarkMode) and (settings.AsBool('AdjustToDarkMode', true)) then begin
        frmSettings.Color:=self.darkModeColors.softerBackground;
-       frmSettings.cbAutoJumpToResult.Font.Color:=clwhite;//self.darkModeColors.text;
+       frmSettings.SpinEdit1.Color:=self.darkModeColors.softerBackground;
+       frmSettings.SpinEdit1.Font.Color:=self.darkModeColors.text;
+       frmSettings.Label1.Font.Color:=self.darkModeColors.text;
+       frmSettings.Label2.Font.Color:=self.darkModeColors.text;
+       frmSettings.Label3.Font.Color:=self.darkModeColors.text;
      end;
 
      self.sqlMan.Disconnect;
@@ -854,54 +882,17 @@ begin
      mr:=frmSettings.ShowModal;
 
      if(mr = mrOk) then begin
-
-      if(settings.ContainsKey('AutoJumpToFirstResult')) then begin
-         settings['AutoJumpToFirstResult'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAutoJumpToResult.Checked, true));
-      end
-      else begin
-         settings.Add('AutoJumpToFirstResult', TAppSetting.Create('AutoJumpToFirstResult'));
-         settings['AutoJumpToFirstResult'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAutoJumpToResult.Checked, true));
-         settings['AutoJumpToFirstResult'].SettingType:=astBool;
-      end;
-
-
-
-      if(settings.ContainsKey('AdjustToDarkMode')) then begin
-         settings['AdjustToDarkMode'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAdjustToDarkMode.Checked, true))
-      end
-      else begin
-         settings.Add('AdjustToDarkMode', TAppSetting.Create('AdjustToDarkMode'));
-         settings['AdjustToDarkMode'].SettingValue := Lowercase(BoolToStr(frmSettings.cbAdjustToDarkMode.Checked, true));
-         settings['AdjustToDarkMode'].SettingType:=astBool;
-      end;
-
-
-      if(settings.ContainsKey('RememberState')) then begin
-         settings['RememberState'].SettingValue := Lowercase(BoolToStr(frmSettings.cbRememberState.Checked, true))
-      end
-      else begin
-         settings.Add('RememberState', TAppSetting.Create('RememberState'));
-         settings['RememberState'].SettingValue := Lowercase(BoolToStr(frmSettings.cbRememberState.Checked, true));
-         settings['RememberState'].SettingType:=astBool;
-      end;
-
-
-      //if(settings['AdjustToDarkMode'].SettingValue = 'false') then begin
-
-
+         settings.SetBool('AutoJumpToFirstResult', frmSettings.cbAutoJumpToResult.Checked);
+         settings.SetBool('AdjustToDarkMode', frmSettings.cbAdjustToDarkMode.Checked);
+         settings.SetBool('RememberState', frmSettings.cbRememberState.Checked);
          NPlugin.DoNppnDarkModeChanged;
-
-        // self.ApplyDarkColorScheme(false, self.darkModeColors);
-      //end;
-
-
-
-
-      sqlman.UpdateSettings(settings, errormessage, success);
      end;
    finally
+       sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
+       sqlman.UpdateSettings(settings, errormessage, success);
+
      frmSettings.Free;
-     sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
+
    end;
 
    self.RefreshSettings;
@@ -1066,8 +1057,8 @@ begin
 
 
      istext := Length(self.SynEdit1.Text) > 0;
-     self.btnSave.Enabled := istext;
-     self.btnSaveAs.Enabled := istext;
+     self.btnSave.Enabled := istext and sqlMan.DBIsAccessible;
+     self.btnSaveAs.Enabled := istext and sqlMan.DBIsAccessible;
      self.btnRun.Enabled := istext;
 
 
@@ -1109,8 +1100,8 @@ begin
   ProcessingChanges:=true;
   try
      istext := Length(self.SynEdit1.Text) > 0;
-     self.btnSave.Enabled := istext;
-     self.btnSaveAs.Enabled := istext;
+     self.btnSave.Enabled := istext and sqlMan.DBIsAccessible;
+     self.btnSaveAs.Enabled := istext and sqlMan.DBIsAccessible;
      self.btnRun.Enabled := istext;
      lblEdit.Caption:='Editing *:';
 
@@ -1214,7 +1205,7 @@ end;
 procedure TfrmMain.ApplyDarkColorScheme(isDarkMode: boolean; delphiColors: TDarkModeColorsDelphi);
 begin
 
-   if(not isDarkMode) or (settings['AdjustToDarkMode'].AsBool=false) then begin
+   if(not isDarkMode) or (not settings.AsBool('AdjustToDarkMode', true)) then begin
       self.SynEdit1.Color := clWindow;
       self.lvRegexLib.Color:=clWindow;
       self.ListBox1.Color:=clWindow;
@@ -1276,6 +1267,10 @@ begin
       self.btnTab0.Transparent:=true;
       self.btnTab1.Transparent:=true;
       self.btnTab2.Transparent:=true;
+
+      self.pnlDBAccessWarning.Color:=clBtnFace;
+      self.lblDBAccessWarning.Font.Color:=clWindowText;
+      self.lblDBFileName.Font.Color:=clWindowText;
    end
    else begin
 
@@ -1332,20 +1327,25 @@ begin
       spinGroupToList.Font.Color:=delphiColors.text;
 
       self.pnlEditor.Color:=delphiColors.softerBackground;
+
+
+      //show hide speed buttons to correct Down-background color on theme switch
+
       self.pnlTabSwitchButtons.Color:=delphiColors.softerBackground;
+
       self.btnTab0.Font.Color:=delphiColors.text;
       self.btnTab1.Font.Color:=delphiColors.text;
       self.btnTab2.Font.Color:=delphiColors.text;
 
-      self.btnTab0.Transparent:=false;
-      self.btnTab1.Transparent:=false;
-      self.btnTab2.Transparent:=false;
-
-      self.Invalidate;
-
       self.btnTab0.Transparent:=true;
       self.btnTab1.Transparent:=true;
       self.btnTab2.Transparent:=true;
+
+      self.pnlDBAccessWarning.Color:=delphiColors.softerBackground;
+      self.lblDBAccessWarning.Font.Color:=delphiColors.text;
+      self.lblDBFileName.Font.Color:=delphiColors.text;
+
+
    end;
 
 end;

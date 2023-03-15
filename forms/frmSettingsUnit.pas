@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, nppplugin, plugin, NppForms, NppDockingForms,
   Vcl.ExtCtrls, Vcl.StdCtrls, AbBase, AbBrowse, AbZBrows, AbUnzper, JclSysInfo,
-  AbZipper, DateUtils, Vcl.Samples.Spin;
+  AbZipper, DateUtils, Vcl.Samples.Spin, System.UITypes;
 
 type
   TfrmSettings = class(TNppForm)
@@ -26,7 +26,9 @@ type
     btnRegexRestore: TButton;
     SpinEdit1: TSpinEdit;
     Label3: TLabel;
+    OpenDialog1: TOpenDialog;
     procedure btnRegexBackupClick(Sender: TObject);
+    procedure btnRegexRestoreClick(Sender: TObject);
   private
     function PadInt(i: Integer; width: Integer): string;
     { Private declarations }
@@ -40,6 +42,37 @@ var
 implementation
 
 {$R *.dfm}
+
+procedure TfrmSettings.btnRegexRestoreClick(Sender: TObject);
+var
+   dbfile: string;
+   zipfilename: string;
+   mstr: TMemoryStream;
+begin
+  inherited;
+  dbfile := GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
+
+  if(self.OpenDialog1.Execute(self.Handle)) then begin
+   mstr:=TMemoryStream.Create;
+
+   try
+      try
+         zipfilename:=self.OpenDialog1.FileName;
+         self.AbUnZipper1.FileName:=zipfilename;
+         self.AbUnZipper1.ExtractToStream('regex.db', mstr);
+
+         mstr.Seek(0, soFromBeginning);
+         mstr.SaveToFile(dbfile);
+      except
+         Vcl.Dialogs.MessageDlg('Failed to restore database,', mtError, [mbOK], 0);
+      end;
+   finally
+      mstr.Free;
+   end;
+
+  end;
+
+end;
 
 function TfrmSettings.PadInt(i: Integer; width: Integer): string;
 var
@@ -81,7 +114,7 @@ begin
 
    dbfile := GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
    zipfilename := 'bfregex_backup_' + PadInt(year, 4) + '-' + PadInt(month, 2) + '-' + PadInt(day, 2) +
-               '_' + PadInt(hour, 2) + '-' + PadInt(minute, 2) + '-' + PadInt(second, 2) + '.zip';
+               '_' + PadInt(hour, 2) + '-' + PadInt(minute, 2) + '-' + PadInt(second, 2) + '.bfrb';
 
    self.SaveDialog1.FileName:=zipfilename;
    if(self.SaveDialog1.Execute(self.Handle)) then begin
@@ -97,7 +130,6 @@ begin
          AbZipper1.ZipfileComment := 'BFRegex Notepad++ Plugin Database Backup [V1]';
          fs.Seek(0, soFromBeginning);
          AbZipper1.AddFromStream(ExtractFileName(dbfile), fs);
-
          AbZipper1.FileName := '';
       finally
          fs.Free;

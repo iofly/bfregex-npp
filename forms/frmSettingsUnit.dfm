@@ -3,7 +3,7 @@ object frmSettings: TfrmSettings
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Settings'
-  ClientHeight = 237
+  ClientHeight = 234
   ClientWidth = 575
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -139,6 +139,7 @@ object frmSettings: TfrmSettings
         Height = 25
         Caption = 'Restore Regex Database...'
         TabOrder = 1
+        OnClick = btnRegexRestoreClick
       end
     end
     object SpinEdit1: TSpinEdit
@@ -146,7 +147,7 @@ object frmSettings: TfrmSettings
       Top = 28
       Width = 105
       Height = 22
-      Ctl3D = True
+      Ctl3D = False
       MaxValue = 0
       MinValue = 0
       ParentCtl3D = False
@@ -155,21 +156,27 @@ object frmSettings: TfrmSettings
     end
   end
   object AbUnZipper1: TAbUnZipper
-    Left = 419
-    Top = 252
+    Left = 35
+    Top = 172
   end
   object SaveDialog1: TSaveDialog
     DefaultExt = '.zip'
     Filter = 'Zip File (*.zip)|*.zip'
     Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
     Title = 'Backup Regex Database'
-    Left = 528
-    Top = 248
+    Left = 144
+    Top = 168
   end
   object AbZipper1: TAbZipper
     AutoSave = False
     DOSMode = False
-    Left = 472
-    Top = 252
+    Left = 88
+    Top = 172
+  end
+  object OpenDialog1: TOpenDialog
+    DefaultExt = '.bfrb'
+    Filter = 'BFRegex Backup File (*.bfrb)|*.bfrb'
+    Left = 448
+    Top = 192
   end
 end

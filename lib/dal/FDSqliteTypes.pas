@@ -3,7 +3,7 @@ unit FDSqliteTypes;
 interface
 
 uses
-  System.SysUtils, Classes, System.DateUtils;
+  System.SysUtils, Classes, System.DateUtils, System.Generics.Collections;
 
 
 
@@ -43,8 +43,8 @@ type
     Count_Save: Integer;
     Count_Run: Integer;
 
-    DateCreated: Integer;
-    DateModified: Integer;
+    DateCreated: Int64;
+    DateModified: Int64;
 
   public
     Constructor Create;
@@ -67,6 +67,19 @@ type
     constructor Create(NewSettingName: string) overload;
   end;
 
+type
+   TSettingsContainer = class(TDictionary<string, TAppSetting>)
+   public
+      procedure SetBool(SettingName: string; val: boolean);
+      procedure SetString(SettingName: string; val: string);
+      procedure SetInt64(SettingName: string; val: Int64);
+      procedure SetDateTime(SettingName: string; val: TDateTime);
+
+      function AsBool(SettingName: string; default: boolean): boolean;
+      function AsString(SettingName: string; default: string): string;
+      function AsInt64(SettingName: string; default: Int64): Int64;
+      function AsDateTime(SettingName: string; default: TDateTime): TDateTime;
+   end;
 
 type
   TDBSearchField = (sfDBProcessID, sfProcessPath);
@@ -111,5 +124,88 @@ function TAppSetting.AsDateTime: TDateTime;
 begin
    result:=UnixToDateTime(self.AsInt(0), true);
 end;
+
+
+
+
+
+function TSettingsContainer.AsBool(SettingName: string; default: boolean): boolean;
+begin
+   if(self.ContainsKey(SettingName)) then begin
+      result:=self[SettingName].AsBool(default);
+   end
+   else begin
+      result:=default;
+   end;
+end;
+
+function TSettingsContainer.AsString(SettingName: string; default: string): string;
+begin
+   if(self.ContainsKey(SettingName)) then begin
+      result:=self[SettingName].AsString;
+   end
+   else begin
+      result:=default;
+   end;
+end;
+
+function TSettingsContainer.AsInt64(SettingName: string; default: Int64): Int64;
+begin
+   if(self.ContainsKey(SettingName)) then begin
+      result:=self[SettingName].AsInt(default);
+   end
+   else begin
+      result:=default;
+   end;
+end;
+
+
+function TSettingsContainer.AsDateTime(SettingName: string; default: TDateTime): TDateTime;
+begin
+   if(self.ContainsKey(SettingName)) then begin
+      result:=self[SettingName].AsDateTime;
+   end
+   else begin
+      result:=default;
+   end;
+end;
+
+
+procedure TSettingsContainer.SetBool(SettingName: string; val: boolean);
+begin
+   if not(self.ContainsKey(SettingName)) then
+      self.Add(SettingName, TAppSetting.Create(SettingName));
+
+   self[SettingName].SettingValue := Lowercase(BoolToStr(val, true));
+   self[SettingName].SettingType:=astBool;
+end;
+
+procedure TSettingsContainer.SetString(SettingName: string; val: string);
+begin
+   if not(self.ContainsKey(SettingName)) then
+      self.Add(SettingName, TAppSetting.Create(SettingName));
+
+   self[SettingName].SettingValue := val;
+   self[SettingName].SettingType:=astString;
+end;
+
+procedure TSettingsContainer.SetInt64(SettingName: string; val: Int64);
+begin
+   if not(self.ContainsKey(SettingName)) then
+      self.Add(SettingName, TAppSetting.Create(SettingName));
+
+   self[SettingName].SettingValue := IntToStr(val);
+   self[SettingName].SettingType:=astInteger;
+end;
+
+procedure TSettingsContainer.SetDateTime(SettingName: string; val: TDateTime);
+begin
+   if not(self.ContainsKey(SettingName)) then
+      self.Add(SettingName, TAppSetting.Create(SettingName));
+
+   self[SettingName].SettingValue := IntToStr(DateTimeToUnix(val, true));
+   self[SettingName].SettingType:=astInteger;
+end;
+
 
 end.
