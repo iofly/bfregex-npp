@@ -183,7 +183,7 @@ begin
    ProcessingChanges:=false;
    NppDefaultDockingMask := DWS_DF_FLOATING;
    FMenuItemCheck := miHidden;
-   self.defaultDBFileName:=GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
+   self.defaultDBFileName:=GetAppdataFolder + '\BFStuff\BFRegexNPP\bfregex.db';
    selectSingleList:=TList<TAppRegex>.Create;
    sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
 
@@ -201,7 +201,7 @@ begin
       btnSave.Enabled:=false;
       btnSaveAs.Enabled:=false;
       self.btnTab2.Visible:=false;
-      lblDBFileName.Caption:=GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
+      lblDBFileName.Caption:=GetAppdataFolder + '\BFStuff\BFRegexNPP\bfregex.db';
       self.pnlDBAccessWarning.Visible:=true;
    end;
 

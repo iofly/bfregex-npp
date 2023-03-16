@@ -963,18 +963,26 @@ begin
 end;
 
 function TNppPlugin.GetSubText(maxLen: Integer): nppString;
-var Size: NativeInt;
-    S: AnsiString;
+var
+   Size: NativeInt;
+   S: AnsiString;
 begin
+  if maxLen < 0 then
+      maxLen := 0;
+
   Result := '';
+  Size := Sci_Send(SCI_GETLENGTH, 0, 0);
 
-
-  if(maxLen = 0) or (maxLen>Size) then begin
-     Size := Sci_Send(SCI_GETLENGTH, 0, 0);
+  if maxLen > 0 then begin
+   if maxLen < Size then begin
+      Size:=maxLen;
+   end
+   else if maxLen >= Size then begin
+      //stick with Size as retrieved above
+   end;
   end
-  else if maxLen<Size then begin
-     Size:=maxLen;
-  end;
+     //stick with Size as retrieved above
+  else
 
 
   Inc(Size);

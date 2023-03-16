@@ -52,7 +52,7 @@ var
    mstr: TMemoryStream;
 begin
   inherited;
-  dbfile := GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
+  dbfile := GetAppdataFolder + '\BFStuff\BFRegexNPP\bfregex.db';
 
   if(self.OpenDialog1.Execute(self.Handle)) then begin
    mstr:=TMemoryStream.Create;
@@ -61,7 +61,7 @@ begin
       try
          zipfilename:=self.OpenDialog1.FileName;
          self.AbUnZipper1.FileName:=zipfilename;
-         self.AbUnZipper1.ExtractToStream('regex.db', mstr);
+         self.AbUnZipper1.ExtractToStream('bfregex.db', mstr);
 
          mstr.Seek(0, soFromBeginning);
          mstr.SaveToFile(dbfile);
@@ -122,7 +122,7 @@ begin
 
    DecodeDateTime(now, year, month, day, hour, minute, second, ms);
 
-   dbfile := GetAppdataFolder + '\BFStuff\BFRegexNPP\regex.db';
+   dbfile := GetAppdataFolder + '\BFStuff\BFRegexNPP\bfregex.db';
    zipfilename := 'bfregex_backup_' + PadInt(year, 4) + '-' + PadInt(month, 2) + '-' + PadInt(day, 2) +
                '_' + PadInt(hour, 2) + '-' + PadInt(minute, 2) + '-' + PadInt(second, 2) + '.bfrb';
 

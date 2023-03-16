@@ -61,6 +61,9 @@ end;
 implementation
 
 constructor TFDSqliteManager.Create(dbfilename: string; CreateIfNotExist: boolean);
+var
+   b: boolean;
+  // dt: TDateTime;
 begin
    FDBIsAccessible:=false;
 
@@ -74,7 +77,8 @@ begin
   _CreateIfNotExist:= CreateIfNotExist;
 
   if (self.CreateDBPath(ExtractFileDir(self._dbfilename))) then begin
-     FDBIsAccessible:=ConnectToDatabase(dbfilename);
+     b:=ConnectToDatabase(dbfilename);
+     FDBIsAccessible:=b;
   end
   else begin
      FDBIsAccessible:=false;
@@ -106,9 +110,11 @@ end;
 function TFDSqliteManager.ConnectToDatabase(dbfilename: string): boolean;
 var
    err: string;
+   //dt: TDateTime;
 begin
 
   if(self._conn.Connected) then begin
+   FDBIsAccessible:=true;
    result:=true;
    exit;
   end;
@@ -125,7 +131,16 @@ begin
 
          if (not(FileExists(dbfilename))) or (FileGetSize(dbfilename) = 0) then begin
             if(CreateDatabaseFile(err)) then begin
+               FDBIsAccessible:=true;
                self.CreateDefaultData;
+               result:=true;
+               exit;
+            end
+            else begin
+               FDBIsAccessible:=false;
+               //dt:=now;
+               result:=false;
+               exit;
             end;
          end;
        end;
@@ -805,6 +820,15 @@ begin
          appRegex.Flag_IgnoreCase:=true;
          self.InsertRegex(appRegex, errormessage, success);
 
+         appRegex.Title:='HTML Hex Color';
+         appRegex.Expression:='#([0-9a-f]{3}|[0-9a-f]{6})*;';
+         appRegex.Flag_IgnoreCase:=true;
+         self.InsertRegex(appRegex, errormessage, success);
+
+         appRegex.Title:='HTML Entities';
+         appRegex.Expression:='&(?:[a-z\d]+|#\d+|#x[a-f\d]+);';
+         appRegex.Flag_IgnoreCase:=true;
+         self.InsertRegex(appRegex, errormessage, success);
 
       finally
          appSetting.Free;
