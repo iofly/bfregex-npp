@@ -38,7 +38,6 @@ type
     pnlRegexOptions: TPanel;
     lblCurrentRegex: TLabel;
     lblEdit: TLabel;
-    cbroIgnoreCase: TCheckBox;
     cbroMultiline: TCheckBox;
     cbroExplicitCapture: TCheckBox;
     cbroSingleLine: TCheckBox;
@@ -83,6 +82,9 @@ type
     pnlDBAccessWarning: TPanel;
     lblDBAccessWarning: TLabel;
     lblDBFileName: TLabel;
+    cbroIgnoreCase: TCheckBox;
+    mnuRename: TMenuItem;
+    btnBackupRestore: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -109,6 +111,7 @@ type
     procedure btnSettingsClick(Sender: TObject);
     procedure btnTab0Click(Sender: TObject);
     procedure pcResultsChange(Sender: TObject);
+    procedure mnuRenameClick(Sender: TObject);
   private
 
     FMenuItemCheck: TMenuItemCheck;
@@ -123,6 +126,7 @@ type
     darkModeColors: TDarkModeColorsDelphi;
     settings: TSettingsContainer;
 
+
     procedure RefreshSettings;
     procedure InsertStringAtcaret(MyMemo: TMemo; const MyString: string);
     procedure SetUpHighlighters;
@@ -135,6 +139,8 @@ type
   protected
 
   public
+
+    procedure RefreshControls;
     procedure Carousel;
     procedure ApplyDarkColorScheme(isDarkMode: boolean; delphiColors: TDarkModeColorsDelphi);
     property MenuItemCheck: TMenuItemCheck read FMenuItemCheck write SetMenuItemCheck;
@@ -575,20 +581,6 @@ begin
         end;
 
 
-        {try
-           for i := 0 to matches.Count-1 do begin
-            self.LogItem('match[' + IntToStr(i) + ']');
-            self.LogItem('    value = ' + matches[i].Value);
-            for g := 0 to matches[i].Groups.Count-1 do begin
-                self.LogItem('        group['+IntToStr(g)+'].Value = ' + matches[i].Groups[g].Value);
-            end;
-           end;
-        except
-            mt:=matches[i];
-           self.LogItem('err match:=' + matches[i].Value);
-        end; }
-
-
         if(rbListMatchTypeGroup.Checked) then begin
            groupIndex:=spinGroupToList.Value;
            for i := 0 to matches.Count-1 do begin
@@ -733,6 +725,11 @@ begin
        if(modalresult <> mrOk) then begin
          exit;
        end;
+       frmRegexTitle.edRegexTitle.Text:=Trim(frmRegexTitle.edRegexTitle.Text);
+       if(Length(frmRegexTitle.edRegexTitle.Text)=0) then begin
+          exit;
+       end;
+
        regexTitle:=frmRegexTitle.edRegexTitle.Text;
     finally
        frmRegexTitle.Free;
@@ -849,10 +846,12 @@ var
    mr: TModalResult;
    errormessage: string;
    success: boolean;
+
+   originaldarkmodesetting, newdarkmodesetting: boolean;
 begin
   inherited;
 
-   frmSettings:=TfrmSettings.Create(Npp);
+   frmSettings:=TfrmSettings.Create(self);// Npp);
    try
 
      self.RefreshSettings;
@@ -868,6 +867,9 @@ begin
      frmSettings.cbRememberState.Checked:=settings.AsBool('RememberState', true);
      frmSettings.SpinEdit1.Value := settings.AsInt64('MaxRegexTestTextChars', 0);
 
+     originaldarkmodesetting:=settings.AsBool('AdjustToDarkMode', true);
+
+
      if(NPlugin.IsDarkMode) and (settings.AsBool('AdjustToDarkMode', true)) then begin
        frmSettings.Color:=self.darkModeColors.softerBackground;
        frmSettings.SpinEdit1.Color:=self.darkModeColors.softerBackground;
@@ -876,6 +878,10 @@ begin
        frmSettings.Label2.Font.Color:=self.darkModeColors.text;
        frmSettings.Label3.Font.Color:=self.darkModeColors.text;
        frmSettings.Label4.Font.Color:=self.darkModeColors.text;
+
+       frmSettings.Label5.Font.Color:=self.darkModeColors.text;
+       frmSettings.Label6.Font.Color:=self.darkModeColors.text;
+       frmSettings.Label7.Font.Color:=self.darkModeColors.text;
      end;
 
      self.sqlMan.Disconnect;
@@ -887,18 +893,101 @@ begin
          settings.SetBool('AdjustToDarkMode', frmSettings.cbAdjustToDarkMode.Checked);
          settings.SetBool('RememberState', frmSettings.cbRememberState.Checked);
          settings.SetInt64('MaxRegexTestTextChars', frmSettings.SpinEdit1.Value);
-         NPlugin.DoNppnDarkModeChanged;
-         //self.Refresh;
+
+
+         newdarkmodesetting:=settings.AsBool('AdjustToDarkMode', true);
+
+         if(originaldarkmodesetting <> newdarkmodesetting) then begin
+
+            //If setting says to adapt to themes
+            NPlugin.DoNppnDarkModeChanged;
+
+
+
+         {   if (NPlugin.IsDarkMode) and (NPlugin.DarkModeHasBeenApplied) then begin
+               //refresh IF nppInDarkMode and PluginNotInDarkMode
+            end;
+            NPlugin.DoNppnDarkModeChanged; }
+
+
+         end;
+
+         {self.Carousel;
+         self.Refresh;
+         self.Carousel;
+         pnlRegexToolbar.Repaint;
+         pnlRegexToolbar.Invalidate;
+         self.pnlCfg.Width:=self.pnlCfg.Width+1;
+         self.btnClear.Refresh;
+         self.btnNew.Refresh;
+         self.btnAbout.Refresh;
+         self.btnSaveAs.Refresh;
+         self.btnSave.Refresh;
+         self.btnSettings.Refresh;
+         self.btnRun.Refresh;}
+
+
+
+         {self.Refresh;
+         self.Height:=self.Height - 1;     }
      end;
    finally
        sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
        sqlman.UpdateSettings(settings, errormessage, success);
 
      frmSettings.Free;
-
+       DoSearch('');
    end;
 
    self.RefreshSettings;
+end;
+
+procedure TfrmMain.RefreshControls;
+begin
+   self.Refresh;
+
+
+   self.pnlEditor.Refresh;
+   self.pnlCfg.Refresh;
+   self.pnlRegexCfg.Refresh;
+   self.pnlLog.Refresh;
+   self.pnlRegexOptions.Refresh;
+   self.pnlRegexToolbar.Refresh;
+   self.pnlTBJankySpacer.Refresh;
+   self.pnlTabSwitchButtons.Refresh;
+   self.pnlDBAccessWarning.Refresh;
+
+   self.TreeView1.Refresh;
+   self.SynEdit1.Refresh;
+   self.ListBox1.Refresh;
+
+   self.Splitter1.Refresh;
+   self.Splitter2.Refresh;
+
+   self.cbroMultiline.Refresh;
+   self.cbroExplicitCapture.Refresh;
+   self.cbroSingleLine.Refresh;
+   self.cbroIgnoreWhitespace.Refresh;
+   self.cbroNotEmpty.Refresh;
+   self.cbIgnoreEmptyGroups.Refresh;
+   self.cbIgnoreDuplicates.Refresh;
+   self.cbroIgnoreCase.Refresh;
+
+         self.btnClear.Refresh;
+         self.btnClear.Refresh;
+         self.btnNew.Refresh;
+         self.btnAbout.Refresh;
+         self.btnSaveAs.Refresh;
+         self.btnSave.Refresh;
+         self.btnSettings.Refresh;
+         self.btnRun.Refresh;
+    self.rbListMatchTypeFull.Refresh;
+    self.rbListMatchTypeGroup.Refresh;
+    self.spinGroupToList.Refresh;
+    self.mmoResults.Refresh;
+
+    self.lvRegexLib.Refresh;
+
 end;
 
 procedure TfrmMain.btnTab0Click(Sender: TObject);
@@ -1077,7 +1166,41 @@ procedure TfrmMain.mnuRegexLibraryListPopup(Sender: TObject);
 begin
   inherited;
   self.mnuRegexDelete.Enabled:=  lvRegexLib.SelCount>0;
-    self.mnuRegexEdit.Enabled:=  lvRegexLib.SelCount=1;
+  self.mnuRename.Enabled:=  lvRegexLib.SelCount=1;
+  self.mnuRegexEdit.Enabled:=  lvRegexLib.SelCount=1;
+end;
+
+procedure TfrmMain.mnuRenameClick(Sender: TObject);
+var
+   frmRegexTitle: TfrmRegexTitle;
+   success: boolean;
+   errormessage: string;
+   id: TListItemDataRegexReference;
+begin
+  inherited;
+
+  if(self.lvRegexLib.Selected = nil) then exit;
+
+  frmRegexTitle:=TfrmRegexTitle.Create(self);
+  try
+      if(NPlugin.IsDarkMode) and (settings.AsBool('AdjustToDarkMode', true)) then begin
+         frmRegexTitle.Color:=self.darkModeColors.softerBackground;
+         frmRegexTitle.edRegexTitle.Color:=self.darkModeColors.softerBackground;
+         frmRegexTitle.edRegexTitle.Font.Color:=self.darkModeColors.text;
+         frmRegexTitle.Label1.Font.Color:=self.darkModeColors.Text;
+      end;
+
+      frmRegexTitle.edRegexTitle.Text:=self.lvRegexLib.Selected.Caption;
+     if(frmRegexTitle.ShowModal = mrOk) then begin
+        id := TListItemDataRegexReference(self.lvRegexLib.Selected.Data);
+        sqlMan.RenameRegex(id.RegexID, frmRegexTitle.edRegexTitle.Text, errormessage, success);
+        self.DoSearch('');
+     end;
+  finally
+    frmRegexTitle.Free;
+  end;
+
+//
 end;
 
 procedure TfrmMain.Carousel;
@@ -1274,6 +1397,8 @@ begin
       self.pnlDBAccessWarning.Color:=clBtnFace;
       self.lblDBAccessWarning.Font.Color:=clWindowText;
       self.lblDBFileName.Font.Color:=clWindowText;
+
+      NPLugin.DarkModeHasBeenApplied:=false;
    end
    else begin
 
@@ -1348,7 +1473,7 @@ begin
       self.lblDBAccessWarning.Font.Color:=delphiColors.text;
       self.lblDBFileName.Font.Color:=delphiColors.text;
 
-
+      NPLugin.DarkModeHasBeenApplied:=true;
    end;
 
 end;

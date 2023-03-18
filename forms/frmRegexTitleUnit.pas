@@ -15,6 +15,7 @@ type
     btnOk: TButton;
     btnCancel: TButton;
     procedure FormKeyPress(Sender: TObject; var Key: Char);
+    procedure FormShow(Sender: TObject);
   private
     { Private declarations }
   public
@@ -40,6 +41,13 @@ begin
       self.ModalResult:=mrOk;
       self.CloseModal;
   end
+end;
+
+procedure TfrmRegexTitle.FormShow(Sender: TObject);
+begin
+  inherited;
+   self.edRegexTitle.SetFocus;
+   self.edRegexTitle.SelectAll;
 end;
 
 end.

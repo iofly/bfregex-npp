@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, nppplugin, plugin, NppForms, NppDockingForms,
   Vcl.ExtCtrls, Vcl.StdCtrls, AbBase, AbBrowse, AbZBrows, AbUnzper, JclSysInfo,
-  AbZipper, DateUtils, Vcl.Samples.Spin, System.UITypes;
+  AbZipper, DateUtils, Vcl.Samples.Spin, System.UITypes, JclFileUtils;
 
 type
   TfrmSettings = class(TNppForm)
@@ -28,6 +28,9 @@ type
     Label3: TLabel;
     OpenDialog1: TOpenDialog;
     Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
     procedure btnRegexBackupClick(Sender: TObject);
     procedure btnRegexRestoreClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -43,6 +46,9 @@ var
 
 implementation
 
+uses frmMainUnit;
+
+
 {$R *.dfm}
 
 procedure TfrmSettings.btnRegexRestoreClick(Sender: TObject);
@@ -50,6 +56,7 @@ var
    dbfile: string;
    zipfilename: string;
    mstr: TMemoryStream;
+   deleted: boolean;
 begin
   inherited;
   dbfile := GetAppdataFolder + '\BFStuff\BFRegexNPP\bfregex.db';
@@ -64,7 +71,20 @@ begin
          self.AbUnZipper1.ExtractToStream('bfregex.db', mstr);
 
          mstr.Seek(0, soFromBeginning);
-         mstr.SaveToFile(dbfile);
+         if(FileExists(dbfile)) then begin
+            deleted:=FileDelete(dbfile, false)
+         end
+         else begin
+            deleted:=true;
+         end;
+
+         if(deleted) then begin
+            mstr.SaveToFile(dbfile);
+         end
+         else begin
+            MessageDlg('Could not overwrite current database with restore file. '+#13+#10+'Please try again', mtError, [mbOK], 0);
+         end;
+
       except
          Vcl.Dialogs.MessageDlg('Failed to restore database,', mtError, [mbOK], 0);
       end;
@@ -75,6 +95,8 @@ begin
   end;
 
 end;
+
+
 
 procedure TfrmSettings.FormShow(Sender: TObject);
 begin

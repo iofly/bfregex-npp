@@ -1,6 +1,4 @@
 BFREGEX BITMAP npp_toolbar_bfregex.bmp
-BFABOUT BITMAP npp_toolbar_about.bmp
 BFREGEXDARK ICON npp_toolbar_bfregex32.ico
-BFABOUTDARK ICON ico_user16.ico
 DBTEMPLATE RCDATA dbtemplate.txt
 

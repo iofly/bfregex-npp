@@ -34,6 +34,7 @@ type TFDSqliteManager = class
       procedure Reconnect;
       procedure InsertRegex(var appRegex: TAppRegex; out errormessage: string; out success: boolean);
       procedure UpdateRegex(appRegex: TAppRegex; out errormessage: string; out success: boolean);
+      procedure RenameRegex(regexID: Integer; newTitle: string; out errormessage: string; out success: boolean);
       procedure DeleteRegex(regexID: Integer; out errormessage: string; out success: boolean);
       procedure GetRegexs(var appRegexes: TList<TAppRegex>; out errormessage: string; out success: boolean; regexid: Integer = 0; searchText: string = ''; order: TRegexsOrderBy = robTitleAsc);
 
@@ -299,6 +300,46 @@ begin
                                  IfThen(appRegex.Flag_NotEmpty, 1, 0),
                                  appRegex.DBExpressionID]);
 
+    except
+      on E: Exception do begin
+        errormessage:=E.Message;
+        success:=false;
+        exit;
+      end;
+    end;
+  finally
+    cmd.Free;
+  end;
+
+  errormessage:='';
+  success:=true;
+end;
+
+
+procedure TFDSqliteManager.RenameRegex(regexID: Integer; newTitle: string; out errormessage: string; out success: boolean);
+var
+  cmd: TStringList;
+ // dbregexid: Integer;
+begin
+   if not(self.FDBIsAccessible) then begin
+      errormessage:='DB Not Accessible';
+      success:=false;
+      exit;
+   end;
+
+  if(regexID<=0) then begin
+    success:=false;
+    errormessage:='';
+  end;
+
+  cmd:=TStringList.Create;
+  try
+    cmd.Add('UPDATE main.regexlib SET ');
+    cmd.Add('title=:TITLE ');
+    cmd.Add('WHERE regexid=:REGEXID;');
+
+    try
+      _conn.ExecSQL(cmd.Text, [newTitle, regexID]);
     except
       on E: Exception do begin
         errormessage:=E.Message;

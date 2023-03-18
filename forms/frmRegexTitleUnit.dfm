@@ -15,6 +15,7 @@ object frmRegexTitle: TfrmRegexTitle
   OldCreateOrder = False
   Position = poScreenCenter
   OnKeyPress = FormKeyPress
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 16
   object Label1: TLabel
@@ -30,6 +31,7 @@ object frmRegexTitle: TfrmRegexTitle
     Width = 289
     Height = 22
     Ctl3D = False
+    MaxLength = 128
     ParentCtl3D = False
     TabOrder = 0
   end

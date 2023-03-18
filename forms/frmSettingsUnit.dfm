@@ -52,7 +52,7 @@ object frmSettings: TfrmSettings
     object Label1: TLabel
       Left = 279
       Top = 56
-      Width = 267
+      Width = 203
       Height = 52
       Caption = 
         '(Zero = entire document.)'#13#10#13#10'Note: Running the regex on a very l' +
@@ -72,12 +72,32 @@ object frmSettings: TfrmSettings
       Height = 13
       Caption = 'characters of the current document'
     end
+    object Label5: TLabel
+      Left = 32
+      Top = 10
+      Width = 123
+      Height = 13
+      Caption = 'Auto Jump To First Result'
+    end
+    object Label6: TLabel
+      Left = 33
+      Top = 33
+      Width = 79
+      Height = 13
+      Caption = 'Remember state'
+    end
+    object Label7: TLabel
+      Left = 33
+      Top = 56
+      Width = 181
+      Height = 13
+      Caption = 'Adjust To Notepad++ Theme Change'
+    end
     object cbAutoJumpToResult: TCheckBox
       Left = 16
       Top = 8
-      Width = 250
+      Width = 153
       Height = 17
-      Caption = 'Auto Jump To First Result'
       Color = clBtnFace
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
@@ -92,9 +112,8 @@ object frmSettings: TfrmSettings
     object cbAdjustToDarkMode: TCheckBox
       Left = 16
       Top = 54
-      Width = 250
+      Width = 209
       Height = 17
-      Caption = 'Adjust To Notepad++ Theme Change'
       Color = clBtnFace
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
@@ -109,9 +128,8 @@ object frmSettings: TfrmSettings
     object cbRememberState: TCheckBox
       Left = 16
       Top = 31
-      Width = 250
+      Width = 105
       Height = 17
-      Caption = 'Remember state'
       Color = clBtnFace
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
@@ -185,6 +203,6 @@ object frmSettings: TfrmSettings
     DefaultExt = '.bfrb'
     Filter = 'BFRegex Backup File (*.bfrb)|*.bfrb'
     Left = 448
-    Top = 192
+    Top = 176
   end
 end

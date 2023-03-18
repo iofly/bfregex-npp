@@ -55,6 +55,7 @@ type
 
     function GetTColorFromWindowsColor(wcolor: Integer): TColor;
   public
+   DarkModeHasBeenApplied: boolean;
     constructor Create;
     procedure DoNppnDarkModeChanged;
     procedure DoNppnToolbarModification; override;
@@ -214,6 +215,7 @@ var
    res: NativeInt;
 begin
 
+
   if(IsDarkMode) then begin
      //ShowMessage('darkmode enabled');
      msg_param:=@dmc;
@@ -226,10 +228,16 @@ begin
       FForm := TfrmMain.Create(self, cnstMainDlgId);
 
      (FForm as TfrmMain).ApplyDarkColorScheme(true, delphiColors);
+     (FForm as TfrmMain).RefreshControls;
   end
   else begin
       (FForm as TfrmMain).ApplyDarkColorScheme(false, delphiColors);
+      (FForm as TfrmMain).RefreshControls;
+
   end;
+
+
+
 
 end;
 
