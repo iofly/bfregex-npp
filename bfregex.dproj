@@ -172,9 +172,10 @@
             <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="forms\frmBackupRestoreUnit.pas">
-            <Form>Form1</Form>
+            <Form>frmBackupRestore</Form>
             <FormType>dfm</FormType>
         </DCCReference>
+        <DCCReference Include="lib\Utils.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

@@ -17,7 +17,8 @@ uses
   FireDAC.UI.Intf, FireDAC.ConsoleUI.Wait, FireDAC.Stan.Intf, FireDAC.Comp.UI,
   FDSqliteTypes, FDSqliteManger, FireDAC.Stan.Def, FireDAC.DApt,
   FireDAC.Phys.SQLiteWrapper.Stat, FireDAC.Stan.ExprFuncs, FireDAC.Phys.SQLiteDef,
-  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async, Vcl.ToolWin;
+  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Stan.Async, Vcl.ToolWin,
+  frmBackupRestoreUnit, Utils;
 
 type
   TfrmMain = class(TNppDockingForm)
@@ -76,9 +77,6 @@ type
     btnSettings: TSpeedButton;
     imglResultsPageControl: TImageList;
     pnlTabSwitchButtons: TPanel;
-    btnTab2: TSpeedButton;
-    btnTab1: TSpeedButton;
-    btnTab0: TSpeedButton;
     pnlDBAccessWarning: TPanel;
     lblDBAccessWarning: TLabel;
     lblDBFileName: TLabel;
@@ -112,6 +110,7 @@ type
     procedure btnTab0Click(Sender: TObject);
     procedure pcResultsChange(Sender: TObject);
     procedure mnuRenameClick(Sender: TObject);
+    procedure btnBackupRestoreClick(Sender: TObject);
   private
 
     FMenuItemCheck: TMenuItemCheck;
@@ -125,7 +124,7 @@ type
     ProcessingChanges: boolean;
     darkModeColors: TDarkModeColorsDelphi;
     settings: TSettingsContainer;
-
+    tabButtons: Array [0..2] of TSpeedButton;
 
     procedure RefreshSettings;
     procedure InsertStringAtcaret(MyMemo: TMemo; const MyString: string);
@@ -135,6 +134,8 @@ type
     procedure ClearHighlighters;
     procedure DoSearch(searchTerm: string);
     procedure SaveRegex(isSaveAs: boolean; out errormessage: string; out success: boolean);
+    procedure RecreateTabButtons;
+
     function IfThenStr(b: boolean; trueStr, falseStr: string): string;
   protected
 
@@ -167,25 +168,19 @@ uses
 procedure TfrmMain.pcResultsChange(Sender: TObject);
 begin
   inherited;
-//
 
-   case self.pcResults.ActivePageIndex of
-      0: begin
-         self.btnTab0.Down:=true;
-      end;
-      1: begin
-        self.btnTab1.Down:=true;
-      end;
-      2: begin
-         self.btnTab2.Down:=true;
-      end;
-   end;
+   if(Assigned(self.tabButtons[self.pcResults.ActivePageIndex])) then
+      self.tabButtons[self.pcResults.ActivePageIndex].Down:=true;
+
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 var
    i: Integer;
 begin
+
+   self.RecreateTabButtons;
+
    ProcessingChanges:=false;
    NppDefaultDockingMask := DWS_DF_FLOATING;
    FMenuItemCheck := miHidden;
@@ -201,12 +196,12 @@ begin
       self.pcResults.Pages[i].TabVisible:=false;
    end;
    self.pcResults.ActivePageIndex:=0;
-   self.btnTab0.Down:=true;
+   self.tabButtons[0].Down:=true;
 
    if not (sqlMan.DBIsAccessible) then begin
       btnSave.Enabled:=false;
       btnSaveAs.Enabled:=false;
-      self.btnTab2.Visible:=false;
+      self.tabButtons[2].Visible:=false;
       lblDBFileName.Caption:=GetAppdataFolder + '\BFStuff\BFRegexNPP\bfregex.db';
       self.pnlDBAccessWarning.Visible:=true;
    end;
@@ -285,6 +280,35 @@ begin
   finally
     frmAbout.Free;
   end;
+end;
+
+procedure TfrmMain.btnBackupRestoreClick(Sender: TObject);
+var
+   frmBackupRestore: TfrmBackupRestore;
+   mr: TModalResult;
+begin
+  inherited;
+
+   frmBackupRestore:=TfrmBackupRestore.Create(Npp);
+   try
+
+     frmBackupRestore.btnRegexBackup.Enabled:=sqlMan.DBIsAccessible;
+     frmBackupRestore.btnRegexRestore.Enabled:=sqlMan.DBIsAccessible;
+
+     self.sqlMan.Disconnect;
+     self.sqlMan.Free;
+     mr:=frmBackupRestore.ShowModal;
+
+     if mr=mrOk then begin
+
+     end;
+
+   finally
+     frmBackupRestore.Free;
+     sqlMan:=TFDSqliteManager.Create(self.defaultDBFileName, true);
+     DoSearch('');
+   end;
+
 end;
 
 procedure TfrmMain.btnClearClick(Sender: TObject);
@@ -612,11 +636,12 @@ begin
     //If on lib page go to results page
     if(resultsAsText.Count>0) then begin
        if(self.pcResults.ActivePageIndex = 2) then begin
-          self.pcResults.ActivePageIndex := 0;
-          self.btnTab0.Down:=true;
+
 
           if(settings['AutoJumpToFirstResult'].AsBool(true)) then begin
              if(self.TreeView1.Items.Count>0) then begin
+               self.pcResults.ActivePageIndex := 0;
+               self.tabButtons[0].Down:=true;
                self.TreeView1.SetFocus;
                self.TreeView1.Selected:=self.TreeView1.Items[0];
                TreeView1DblClick(nil);
@@ -856,11 +881,7 @@ begin
 
      self.RefreshSettings;
 
-     frmSettings.cbAutoJumpToResult.Enabled:=sqlMan.DBIsAccessible;
-     frmSettings.cbAdjustToDarkMode.Enabled:=sqlMan.DBIsAccessible;
-     frmSettings.cbRememberState.Enabled:=sqlMan.DBIsAccessible;
-     frmSettings.btnRegexBackup.Enabled:=sqlMan.DBIsAccessible;
-     frmSettings.btnRegexRestore.Enabled:=sqlMan.DBIsAccessible;
+
 
      frmSettings.cbAutoJumpToResult.Checked:=settings.AsBool('AutoJumpToFirstResult', true);
      frmSettings.cbAdjustToDarkMode.Checked:=settings.AsBool('AdjustToDarkMode', true);
@@ -991,10 +1012,20 @@ begin
 end;
 
 procedure TfrmMain.btnTab0Click(Sender: TObject);
+var
+   sp: TSpeedButton;
 begin
   inherited;
-  self.pcResults.ActivePageIndex:=(sender as TSpeedButton).Tag;
-  (sender as TSpeedButton).Down:=true;
+
+  if (Sender = nil) then begin
+     exit;
+  end
+  else begin
+     sp:=TSpeedButton(Sender);
+     sp.Down:=true;
+     self.pcResults.ActivePageIndex:=sp.Tag;
+  end;
+
 end;
 
 procedure TfrmMain.LogItem(str: string);
@@ -1330,7 +1361,6 @@ end;
 
 procedure TfrmMain.ApplyDarkColorScheme(isDarkMode: boolean; delphiColors: TDarkModeColorsDelphi);
 begin
-
    if(not isDarkMode) or (not settings.AsBool('AdjustToDarkMode', true)) then begin
       self.SynEdit1.Color := clWindow;
       self.lvRegexLib.Color:=clWindow;
@@ -1380,28 +1410,27 @@ begin
       self.pnlEditor.Color:=clBtnFace;
       self.pnlTabSwitchButtons.Color:=clBtnFace;
 
-      self.btnTab0.Font.Color:=clWindowText;
-      self.btnTab1.Font.Color:=clWindowText;
-      self.btnTab2.Font.Color:=clWindowText;
-
-      self.btnTab0.Transparent:=false;
-      self.btnTab1.Transparent:=false;
-      self.btnTab2.Transparent:=false;
-
-      self.Invalidate;
-
-      self.btnTab0.Transparent:=true;
-      self.btnTab1.Transparent:=true;
-      self.btnTab2.Transparent:=true;
-
       self.pnlDBAccessWarning.Color:=clBtnFace;
       self.lblDBAccessWarning.Font.Color:=clWindowText;
       self.lblDBFileName.Font.Color:=clWindowText;
 
+      self.mmoResults.ScrollBars:=ssNone;
+      self.mmoResults.Refresh;
+      self.mmoResults.ScrollBars:=ssBoth;
+      self.mmoResults.Refresh;
+
+      pnlTabSwitchButtons.Refresh;
+      pnlTabSwitchButtons.Invalidate;
+
+      RecreateTabButtons;
+      self.tabButtons[0].Font.Color:=clWindowText;
+      self.tabButtons[1].Font.Color:=clWindowText;
+      self.tabButtons[2].Font.Color:=clWindowText;
+
       NPLugin.DarkModeHasBeenApplied:=false;
+
    end
    else begin
-
       self.darkModeColors:=delphiColors;
 
       self.SynEdit1.Color := delphiColors.softerBackground;
@@ -1455,27 +1484,105 @@ begin
       spinGroupToList.Font.Color:=delphiColors.text;
 
       self.pnlEditor.Color:=delphiColors.softerBackground;
-
-
       //show hide speed buttons to correct Down-background color on theme switch
 
       self.pnlTabSwitchButtons.Color:=delphiColors.softerBackground;
-
-      self.btnTab0.Font.Color:=delphiColors.text;
-      self.btnTab1.Font.Color:=delphiColors.text;
-      self.btnTab2.Font.Color:=delphiColors.text;
-
-      self.btnTab0.Transparent:=true;
-      self.btnTab1.Transparent:=true;
-      self.btnTab2.Transparent:=true;
 
       self.pnlDBAccessWarning.Color:=delphiColors.softerBackground;
       self.lblDBAccessWarning.Font.Color:=delphiColors.text;
       self.lblDBFileName.Font.Color:=delphiColors.text;
 
+      self.mmoResults.ScrollBars:=ssNone;
+      self.mmoResults.Refresh;
+      self.mmoResults.ScrollBars:=ssBoth;
+      self.mmoResults.Refresh;
+
+      pnlTabSwitchButtons.Refresh;
+      pnlTabSwitchButtons.Invalidate;
+
+      RecreateTabButtons;
+      self.tabButtons[0].Font.Color:=delphiColors.text;
+      self.tabButtons[1].Font.Color:=delphiColors.text;
+      self.tabButtons[2].Font.Color:=delphiColors.text;
+
       NPLugin.DarkModeHasBeenApplied:=true;
    end;
+end;
 
+procedure TfrmMain.RecreateTabButtons;
+var
+   downbtn: Integer;
+begin
+//126 104 112
+   downbtn := 0;
+   if(tabButtons[0] <> nil) then begin
+    if(tabButtons[0].Down) then downbtn:=0;
+    FreeAndNil(tabButtons[0]);
+   end;
+   if(tabButtons[1] <> nil) then begin
+    if(tabButtons[1].Down) then downbtn:=1;
+    FreeAndNil(tabButtons[1]);
+   end;
+   if(tabButtons[2] <> nil) then begin
+    if(tabButtons[2].Down) then downbtn:=2;
+    FreeAndNil(tabButtons[2]);
+   end;
+
+   tabButtons[2]:=TSpeedButton.Create(self);
+   tabButtons[2].Parent:=self.pnlTabSwitchButtons;
+   tabButtons[2].Align:=alLeft;
+   tabButtons[2].Width:=112;
+   tabButtons[2].Height:=38;
+   tabButtons[2].Caption:='Regex Library';
+   tabButtons[2].Images:=self.imglResultsPageControl;
+   tabButtons[2].ImageIndex:=2;
+   tabButtons[2].Tag:=2;
+   tabButtons[2].Flat:=true;
+   tabButtons[2].Transparent:=true;
+   tabButtons[2].GroupIndex:=991;
+   tabButtons[2].AllowAllUp:=false;
+   tabButtons[2].OnClick:=btnTab0Click;
+
+   tabButtons[1]:=TSpeedButton.Create(self);
+   tabButtons[1].Parent:=self.pnlTabSwitchButtons;
+   tabButtons[1].Align:=alLeft;
+   tabButtons[1].Width:=104;
+   tabButtons[1].Height:=38;
+   tabButtons[1].Caption:='Text Results';
+   tabButtons[1].Images:=self.imglResultsPageControl;
+   tabButtons[1].ImageIndex:=1;
+   tabButtons[1].Tag:=1;
+   tabButtons[1].Flat:=true;
+   tabButtons[1].Transparent:=true;
+   tabButtons[1].GroupIndex:=991;
+   tabButtons[1].AllowAllUp:=false;
+   tabButtons[1].OnClick:=btnTab0Click;
+
+
+   tabButtons[0]:=TSpeedButton.Create(self);
+   tabButtons[0].Parent:=self.pnlTabSwitchButtons;
+   tabButtons[0].Align:=alLeft;
+   tabButtons[0].Width:=126;
+   tabButtons[0].Height:=38;
+   tabButtons[0].Caption:='Navigate Results';
+   tabButtons[0].Images:=self.imglResultsPageControl;
+   tabButtons[0].ImageIndex:=0;
+   tabButtons[0].Tag:=0;
+   tabButtons[0].Flat:=true;
+   tabButtons[0].Transparent:=true;
+   tabButtons[0].GroupIndex:=991;
+   tabButtons[0].AllowAllUp:=false;
+   tabButtons[0].OnClick:=btnTab0Click;
+
+
+
+
+   if(downbtn = 0) then tabButtons[0].Down:=true;
+   if(downbtn = 1) then tabButtons[1].Down:=true;
+   if(downbtn = 2) then tabButtons[2].Down:=true;
+
+   pnlTabSwitchButtons.Refresh;
+   pnlTabSwitchButtons.Invalidate;
 end;
 
 end.

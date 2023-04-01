@@ -91,15 +91,24 @@ begin
   NPlugin.FuncAbout;
 end;
 
+
+procedure _FuncPlaceHolder; cdecl;
+begin
+  NPlugin.FuncAbout;
+end;
+
 { TdsPlugin }
 
 constructor TdsPlugin.Create;
+var
+   mainmenu: HMENU;
 begin
   inherited;
 
    PluginName := 'BFRegex';
    AddFuncItem('Show BFRegex', _FuncDoShowHide);
    AddFuncItem('About BFRegex', _FuncAbout);
+
    Sci_Send(SCI_SETMODEVENTMASK,SC_MOD_INSERTTEXT or SC_MOD_DELETETEXT,0);
 end;
 
@@ -130,6 +139,15 @@ begin
 
   tb.ToolbarBmp := LoadImage(Hinstance, 'BFREGEX', IMAGE_BITMAP, 0, 0, (LR_DEFAULTSIZE));
   Npp_Send(NPPM_ADDTOOLBARICON_FORDARKMODE, WPARAM(self.CmdIdFromDlgId(cnstMainDlgId)), LPARAM(@ico1));
+
+
+
+
+
+
+
+
+
 
 {  tb.ToolbarBmp := LoadImage(Hinstance, 'BFABOUT', IMAGE_BITMAP, 0, 0, (LR_DEFAULTSIZE));
   Npp_Send(NPPM_ADDTOOLBARICON_FORDARKMODE, WPARAM(self.CmdIdFromDlgId(cnstMainDlgId+1)), LPARAM(@ico2));    }

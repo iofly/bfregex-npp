@@ -3,7 +3,7 @@ object frmSettings: TfrmSettings
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Settings'
-  ClientHeight = 234
+  ClientHeight = 186
   ClientWidth = 575
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -18,7 +18,7 @@ object frmSettings: TfrmSettings
   TextHeight = 13
   object btnCancel: TButton
     Left = 287
-    Top = 199
+    Top = 151
     Width = 105
     Height = 25
     Caption = 'Close'
@@ -27,7 +27,7 @@ object frmSettings: TfrmSettings
   end
   object btnOk: TButton
     Left = 171
-    Top = 199
+    Top = 151
     Width = 110
     Height = 25
     Caption = 'Apply Changes'
@@ -38,7 +38,7 @@ object frmSettings: TfrmSettings
     Left = 0
     Top = 0
     Width = 575
-    Height = 193
+    Height = 137
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 2
@@ -141,33 +141,6 @@ object frmSettings: TfrmSettings
       TabOrder = 1
       StyleElements = []
     end
-    object GroupBox1: TGroupBox
-      Left = 16
-      Top = 114
-      Width = 537
-      Height = 69
-      Caption = 'Backup and Restore'
-      TabOrder = 4
-      object btnRegexBackup: TButton
-        Left = 16
-        Top = 24
-        Width = 249
-        Height = 25
-        Hint = 'New Regular Expression'
-        Caption = 'Backup Regex Database...'
-        TabOrder = 0
-        OnClick = btnRegexBackupClick
-      end
-      object btnRegexRestore: TButton
-        Left = 271
-        Top = 23
-        Width = 250
-        Height = 25
-        Caption = 'Restore Regex Database...'
-        TabOrder = 1
-        OnClick = btnRegexRestoreClick
-      end
-    end
     object SpinEdit1: TSpinEdit
       Left = 279
       Top = 28
@@ -180,29 +153,5 @@ object frmSettings: TfrmSettings
       TabOrder = 3
       Value = 0
     end
-  end
-  object AbUnZipper1: TAbUnZipper
-    Left = 35
-    Top = 172
-  end
-  object SaveDialog1: TSaveDialog
-    DefaultExt = '.zip'
-    Filter = 'Zip File (*.zip)|*.zip'
-    Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
-    Title = 'Backup Regex Database'
-    Left = 144
-    Top = 168
-  end
-  object AbZipper1: TAbZipper
-    AutoSave = False
-    DOSMode = False
-    Left = 88
-    Top = 172
-  end
-  object OpenDialog1: TOpenDialog
-    DefaultExt = '.bfrb'
-    Filter = 'BFRegex Backup File (*.bfrb)|*.bfrb'
-    Left = 448
-    Top = 176
   end
 end
